@@ -23,6 +23,7 @@ def login_handler():
 def signup_handler():
     try:
         data=flask.request.get_json()
+        
         addUser(data.get('username'),data.get('password'))
         return flask.jsonify({'response':'OK'})
     except Exception as e:

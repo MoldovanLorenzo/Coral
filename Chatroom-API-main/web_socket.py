@@ -23,5 +23,8 @@ def handle_message(data):
     message_data=json.loads(data)
     user_message=message_data['user_message']
     chatroom_id=message_data['user_chatroom']
-    
-    socketio.emit('message',json.dumps({'user_message':'BACKEND_PARSED: '+user_message}))
+    try:
+        addMessage(chatroom_id)
+    except Exception as e:
+        socketio.emit('error',json.dumps({'error':str(e)}))    
+    socketio.emit('message',json.dumps({'user_message':'BACKEND_PARSED: '+user_message}),room=chatroom_id)

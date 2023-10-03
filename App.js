@@ -5,11 +5,12 @@ import { createStackNavigator } from "@react-navigation/stack";
 import FriendChat from "./Screens/FriendChat";
 import ChatComponent from "./Screens/Chat";
 import Settings from "./Screens/Settings";
+import Singup from "./Screens/Singup";
 
 const Stack = createStackNavigator();
 const App = () => {
   return (
-    <NavigationContainer>
+    /*<NavigationContainer>
       <Stack.Navigator>
         <Stack.Screen
           name="Home"
@@ -33,6 +34,8 @@ const App = () => {
         />
       </Stack.Navigator>
     </NavigationContainer>
+    */
+    <Singup />
   );
 };
 
