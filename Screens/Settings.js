@@ -1,5 +1,5 @@
 import React from "react";
-import { View, Text, TouchableOpacity,ScrolView } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView} from 'react-native';
 import { FontAwesome } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 
@@ -10,6 +10,7 @@ export default function Settings() {
     navigation.navigate('Home');
   };
   return (
+    <ScrollView>
     <View style={{ flex: 1, flexDirection: 'column' }}>
       <View style={{ alignSelf: 'center', height: 100, width: 450 }}>
         <Text style={{ alignSelf: 'center', position: 'relative', top: 50, fontWeight: 'bold', fontSize: 25 }}>Settings</Text>
@@ -46,6 +47,24 @@ export default function Settings() {
 <Text style={{alignSelf:'center',fontSize:20,fontWeight:'bold',color:'gray',position:'relative',bottom:10}}>Themes</Text>
 </View>
 </TouchableOpacity>
+<TouchableOpacity>
+<View style={{paddingLeft:30,height:70,width:300,backgroundColor:'lightgray',borderRadius:30,alignSelf:'center',marginTop:20}}>
+<FontAwesome name="question" size={30} color='gray' style={{position:'relative',top:20}}/>
+<Text style={{alignSelf:'center',fontSize:20,fontWeight:'bold',color:'gray',position:'relative',bottom:10}}>Asistence</Text>
+</View>
+</TouchableOpacity>
+<TouchableOpacity>
+<View style={{paddingLeft:30,height:70,width:300,backgroundColor:'lightgray',borderRadius:30,alignSelf:'center',marginTop:20}}>
+<FontAwesome name="comment" size={30} color='gray' style={{position:'relative',top:20}}/>
+<Text style={{alignSelf:'center',fontSize:20,fontWeight:'bold',color:'gray',position:'relative',bottom:10}}>feedback</Text>
+</View>
+</TouchableOpacity>
+<TouchableOpacity>
+<View style={{paddingLeft:30,height:70,width:300,backgroundColor:'#ff7b7b',borderRadius:30,alignSelf:'center',marginTop:20}}>
+<Text style={{alignSelf:'center',fontSize:20,fontWeight:'bold',color:'#ff5252',position:'relative',marginTop:20}}>Log out</Text>
+</View>
+</TouchableOpacity>
     </View>
+    </ScrollView>
   );
 }

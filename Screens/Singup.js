@@ -1,13 +1,8 @@
 import React, { useState } from "react";
 import { View, Text, TextInput } from 'react-native';
-import CountrySelector from "./CountrySelector";
+import RNPickerSelect from 'react-native-picker-select';
 
-export default function Singup() {
-  const [selectedCountry, setSelectedCountry] = useState("");
-  const handleCountryChange = (country) => {
-    setSelectedCountry(country);
-  };
-
+export default function Signup() {
   return (
     <View style={{ flex: 1, backgroundColor: '#ff9a00' }}>
       <View style={{
@@ -15,7 +10,7 @@ export default function Singup() {
         height: 500,
         width: 320,
         alignSelf: 'center',
-        marginTop: 170,
+        marginTop: 130,
         borderRadius: 30,
         borderBottomLeftRadius: 0,
         borderBottomRightRadius: 0,
@@ -30,8 +25,8 @@ export default function Singup() {
         </Text>
         <TextInput placeholder="Username" style={{ padding: 10, borderBottomWidth: 1, borderBottomColor: 'gray', margin: 20 }} />
         <TextInput placeholder="Password" style={{ padding: 10, borderBottomWidth: 1, borderBottomColor: 'gray', margin: 20 }} />
-        <CountrySelector onCountryChange={(country) => console.log(`Țara selectată: ${country}`)} />
       </View>
     </View>
   );
 }
+
