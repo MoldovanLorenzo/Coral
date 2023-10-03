@@ -36,14 +36,20 @@ export default function Settings() {
 </TouchableOpacity>
 <TouchableOpacity>
 <View style={{paddingLeft:30,height:70,width:300,backgroundColor:'lightgray',borderRadius:30,alignSelf:'center',marginTop:20}}>
-<FontAwesome name="bell" size={30} color='gray' style={{position:'relative',top:20}}/>
-<Text style={{alignSelf:'center',fontSize:20,fontWeight:'bold',color:'gray',position:'relative',bottom:10}}>Notifications</Text>
+<FontAwesome name="car" size={30} color='gray' style={{position:'relative',top:20}}/>
+<Text style={{alignSelf:'center',fontSize:20,fontWeight:'bold',color:'gray',position:'relative',bottom:10}}>Theme</Text>
 </View>
 </TouchableOpacity>
 <TouchableOpacity>
 <View style={{paddingLeft:30,height:70,width:300,backgroundColor:'lightgray',borderRadius:30,alignSelf:'center',marginTop:20}}>
-<FontAwesome name="bell" size={30} color='gray' style={{position:'relative',top:20}}/>
-<Text style={{alignSelf:'center',fontSize:20,fontWeight:'bold',color:'gray',position:'relative',bottom:10}}>Notifications</Text>
+<FontAwesome name="language" size={30} color='gray' style={{position:'relative',top:20}}/>
+<Text style={{alignSelf:'center',fontSize:20,fontWeight:'bold',color:'gray',position:'relative',bottom:10}}>Language</Text>
+</View>
+</TouchableOpacity>
+<TouchableOpacity>
+<View style={{paddingLeft:30,height:70,width:300,backgroundColor:'lightgray',borderRadius:30,alignSelf:'center',marginTop:20}}>
+<FontAwesome name="language" size={30} color='gray' style={{position:'relative',top:20}}/>
+<Text style={{alignSelf:'center',fontSize:20,fontWeight:'bold',color:'gray',position:'relative',bottom:10}}>Language</Text>
 </View>
 </TouchableOpacity>
     </View>
