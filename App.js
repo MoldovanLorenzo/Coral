@@ -6,11 +6,27 @@ import FriendChat from "./Screens/FriendChat";
 import ChatComponent from "./Screens/Chat";
 import Settings from "./Screens/Settings";
 import Singup from "./Screens/Singup";
+import Login from "./Screens/Login";
+import GetStartet from"./Screens/GetStardet";
 const Stack = createStackNavigator();
 const App = () => {
   return (
   <NavigationContainer>
       <Stack.Navigator>
+        <Stack.Screen
+        name="GetStartet"
+        component={GetStartet}
+        options={{headerShown: false}}
+        />
+        <Stack.Screen
+        name="Singup"
+        component={Singup}
+        options={{headerShown: false}} />
+        <Stack.Screen
+        name="Login"
+        component={Login}
+        options={{headerShown: false}}
+        />
         <Stack.Screen
           name="Home"
           component={HomeScreen}

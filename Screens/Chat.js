@@ -11,8 +11,6 @@ class ChatComponent extends Component {
       newMessage: '',
     };
   }
-
-  // Funcție pentru a adăuga un mesaj la listă
   addMessage = () => {
     const { messages, newMessage } = this.state;
     if (newMessage.trim() !== '') {
