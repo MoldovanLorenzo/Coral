@@ -8,6 +8,7 @@ import Settings from "./Screens/Settings";
 import Singup from "./Screens/Singup";
 import Login from "./Screens/Login";
 import GetStartet from"./Screens/GetStardet";
+import FriendsFinder from "./Screens/FriendsFinder";
 const Stack = createStackNavigator();
 const App = () => {
   return (
@@ -46,6 +47,11 @@ const App = () => {
           name="Settings"
           component={Settings}
           options={{headerShown: false}}
+        />
+        <Stack.Screen
+        name="FriendsFinder"
+        component={FriendsFinder}
+        options={{headerShown: false}}
         />
       </Stack.Navigator>
     </NavigationContainer>
