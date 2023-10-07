@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, FlatList, TouchableOpacity } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { FontAwesome } from '@expo/vector-icons';
@@ -8,7 +8,7 @@ import FriendsFinder from './FriendsFinder';
 const HomeScreen = () => {
   const navigation = useNavigation();
   const [activeTab, setActiveTab] = useState('friends');
-  let authToken=null;
+  let authToken = null;
   useEffect(() => {
     const checkAuthToken = async () => {
       try {
@@ -67,24 +67,26 @@ const HomeScreen = () => {
   const handleSettingsSelection = () => {
     navigation.navigate('Settings');
   };
-  const handleFriendsFinderSelection = ()=> {
+  const handleFriendsFinderSelection = () => {
     navigation.navigate('FriendsFinder');
   }
   return (
     <View style={{ flex: 1 }}>
-      <View style={{flexDirection:'row'}}>
-     <TouchableOpacity onPres={handleFriendsFinderSelection} style={{alignSelf:'center', position:'relative',left:20}}>
-      <FontAwesome name="user-plus" size={25} color="#ff9a00" />
-     </TouchableOpacity>
-      <TouchableOpacity
-  onPress={handleSettingsSelection}
-  style={{ position: 'relative', left: 250, top: 57, margin: 0 }}
->
-  <FontAwesome name="gear" size={30} color="#ff9a00" />
-</TouchableOpacity>
+      <View style={{ flexDirection: 'row' }}>
+        <TouchableOpacity onPress={handleFriendsFinderSelection} style={{ alignSelf: 'center', position: 'relative', left: 20 }}>
+          <FontAwesome name="user-plus" size={25} color="#ff9a00" />
+        </TouchableOpacity>
 
-         <Text style={{alignSelf:'center',margin:50,marginLeft:65,fontSize:30,fontWeight:'bold'}}>Chats</Text>
+        <TouchableOpacity
+          onPress={handleSettingsSelection}
+          style={{ position: 'relative', left: 250, top: 57, margin: 0 }}
+        >
+          <FontAwesome name="gear" size={30} color="#ff9a00" />
+        </TouchableOpacity>
+
+        <Text style={{ alignSelf: 'center', margin: 50, marginLeft: 65, fontSize: 30, fontWeight: 'bold' }}>Chats</Text>
       </View>
+
       <View style={{ flexDirection: 'row', width: 250, alignSelf: 'center', borderRadius: 23,backgroundColor:'lightgray' }}>
         <TouchableOpacity
           onPress={() => setActiveTab('friends')}
