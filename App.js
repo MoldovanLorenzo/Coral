@@ -9,6 +9,12 @@ import Singup from "./Screens/Singup";
 import Login from "./Screens/Login";
 import GetStartet from"./Screens/GetStardet";
 import FriendsFinder from "./Screens/FriendsFinder";
+import Profile from "./Screens/SettingsScreens/Profile";
+import Asistence from"./Screens/SettingsScreens/Asistence";
+import Feedbad from "./Screens/SettingsScreens/Feedbad";
+import Themes from "./Screens/SettingsScreens/Themes";
+import Notifications from "./Screens/SettingsScreens/Notifications";
+import Language from "./Screens/SettingsScreens/Language";
 const Stack = createStackNavigator();
 const App = () => {
   return (
@@ -39,6 +45,31 @@ const App = () => {
           options={{ headerShown: false }}
         />
         <Stack.Screen
+          name="Asistence"
+          component={Asistence}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="Feedback"
+          component={Feedbad}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="Language"
+          component={Language}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="Notifications"
+          component={Notifications}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="Themes"
+          component={Themes}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
           name="ChatRoom"
           component={ChatComponent}
           options={{ headerShown: false }}
@@ -47,6 +78,11 @@ const App = () => {
           name="Settings"
           component={Settings}
           options={{headerShown: false}}
+        />
+        <Stack.Screen
+        name="Profile"
+        component={Profile}
+        options={{headerShown: false}}
         />
         <Stack.Screen
         name="FriendsFinder"
