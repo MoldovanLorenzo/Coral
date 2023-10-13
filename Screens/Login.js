@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from "react";
 import { View, Text, TextInput, TouchableOpacity } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useNavigation } from "@react-navigation/native";
 
 export default function Login() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const navigation = useNavigation();
 
   const handleLogin = () => {
     const serverUrl = "http://simondarius.pythonanywhere.com/login";
@@ -28,15 +30,15 @@ export default function Login() {
 
         if (responseData.response === "OK" && responseData.auth_token) {
           await AsyncStorage.setItem("auth_token", responseData.auth_token);
+          navigation.navigate('Home');
         } else {
-        setError("Eroare la autentificare. Verificați datele introduse.");
+          setError("Eroare la autentificare. Verificați datele introduse.");
         }
       })
       .catch((error) => {
         console.error("Eroare de rețea:", error);
       });
   };
-
 
   return (
     <View style={{ flex: 1, backgroundColor: "#ff9a00" }}>

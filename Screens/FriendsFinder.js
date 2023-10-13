@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { View, Text, TouchableOpacity, TextInput, StyleSheet, FlatList, Image } from 'react-native';
 import { FontAwesome } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
+import AsyncStorage from "@react-native-async-storage/async-storage"; // Păstrăm importul AsyncStorage
 
 const FriendsFinder = () => {
   const navigation = useNavigation();
@@ -13,9 +14,36 @@ const FriendsFinder = () => {
 
   const handleSearch = async () => {
     try {
-      const response = await fetch(`URL_API_SERVER/cauta/${searchText}`);
-      const data = await response.json();
-      setSearchResults(data);
+      const checkAuthToken = async () => {
+        try {
+          authToken = await AsyncStorage.getItem('authToken');
+          console.log(authToken);
+        } catch (error) {
+          console.error('Eroare la retragerea token-ului:', error);
+        }
+      };
+      checkAuthToken().then(() =>
+        fetch("http://simondarius.pythonanywhere.com/users", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": authToken,
+          },
+          body: JSON.stringify({
+            "what": "findUserByString",
+            "username": searchText
+          }),
+        })
+          .then((response) => response.json())
+          .then(async (responseData) => {
+            console.log("Response from server:", responseData);
+            setSearchResults(responseData);
+          })
+          .catch((error) => {
+            console.error("Eroare de rețea:", error);
+          })
+      );
+
     } catch (error) {
       console.error("Eroare de rețea:", error);
     }
@@ -48,8 +76,8 @@ const FriendsFinder = () => {
           <View style={styles.friendItem}>
             <Image source={{ uri: item.avatar }} style={styles.avatar} />
             <View>
-              <Text style={styles.friendName}>{item.nume}</Text>
-              <Text>{item.prenume}</Text>
+              <Text style={styles.friendName}>{item.username}</Text>
+              <Text>{item.id}</Text>
             </View>
           </View>
         )}
@@ -77,7 +105,7 @@ const styles = StyleSheet.create({
   },
   headerText: {
     fontSize: 20,
-    alignSelf:'center'
+    alignSelf: 'center'
   },
   inputContainer: {
     marginTop: 10,
