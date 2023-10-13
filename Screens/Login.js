@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { View, Text, TextInput, TouchableOpacity } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useNavigation } from "@react-navigation/native";
@@ -9,7 +9,7 @@ export default function Login() {
   const [error, setError] = useState("");
   const navigation = useNavigation();
 
-  const handleLogin = async () => {
+  const handleLogin = () => {
     const serverUrl = "http://simondarius.pythonanywhere.com/login";
 
     const data = {
@@ -17,27 +17,27 @@ export default function Login() {
       password: password,
     };
 
-    try {
-      const response = await fetch(serverUrl, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(data),
+    fetch(serverUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(data),
+    })
+      .then((response) => response.json())
+      .then(async (responseData) => {
+        console.log("Răspuns de la server:", responseData);
+
+        if (responseData.response === "OK" && responseData.auth_token) {
+          await AsyncStorage.setItem("auth_token", responseData.auth_token);
+          navigation.navigate('Home');
+        } else {
+          setError("Eroare la autentificare. Verificați datele introduse.");
+        }
+      })
+      .catch((error) => {
+        console.error("Eroare de rețea:", error);
       });
-
-      const responseData = await response.json();
-
-      if (responseData.response === "OK" && responseData.auth_token) {
-        console.log(responseData);
-        await AsyncStorage.setItem("authToken", responseData.auth_token);
-        navigation.navigate('Home');
-      } else {
-        setError("Eroare la autentificare. Verificați datele introduse.");
-      }
-    } catch (error) {
-      console.error("Eroare de rețea:", error);
-    }
   };
 
   return (
@@ -84,17 +84,7 @@ export default function Login() {
           }}
           onChangeText={(text) => setPassword(text)}
         />
-        <TouchableOpacity
-          onPress={handleLogin}
-          style={{
-            alignSelf: 'center',
-            backgroundColor: '#ff9a00',
-            paddingVertical: 15,
-            paddingHorizontal: 60,
-            borderRadius: 10,
-            marginTop: 40,
-          }}
-        >
+        <TouchableOpacity onPress={handleLogin} style={{alignSelf:'center',backgroundColor:'#ff9a00',paddingVertical:15,paddingHorizontal:60,borderRadius:10,marginTop:40}}>
           <Text>Login</Text>
         </TouchableOpacity>
       </View>

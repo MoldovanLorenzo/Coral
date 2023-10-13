@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { View, Text, TouchableOpacity, TextInput, StyleSheet, FlatList, Image } from 'react-native';
 import { FontAwesome } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import AsyncStorage from "@react-native-async-storage/async-storage"; // Păstrăm importul AsyncStorage
 
 const FriendsFinder = () => {
   const navigation = useNavigation();
@@ -31,20 +31,19 @@ const FriendsFinder = () => {
           },
           body: JSON.stringify({
             "what": "findUserByString",
-            "username":searchText
+            "username": searchText
           }),
         })
           .then((response) => response.json())
           .then(async (responseData) => {
             console.log("Response from server:", responseData);
             setSearchResults(responseData);
-              
           })
           .catch((error) => {
             console.error("Eroare de rețea:", error);
           })
       );
-    
+
     } catch (error) {
       console.error("Eroare de rețea:", error);
     }
@@ -106,7 +105,7 @@ const styles = StyleSheet.create({
   },
   headerText: {
     fontSize: 20,
-    alignSelf:'center'
+    alignSelf: 'center'
   },
   inputContainer: {
     marginTop: 10,
