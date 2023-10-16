@@ -9,9 +9,10 @@ export default function GetStarted() {
   useEffect(() => {
     const checkAuthToken = async () => {
       try {
-        const authToken = await AsyncStorage.getItem('authToken');
+        const authToken = await AsyncStorage.getItem('auth_token');
         if (authToken) {
-          navigation.navigate('HomeScreen');
+          navigation.navigate('Home');
+          return;
         }
       } catch (error) {
         console.error('Eroare la verificarea token-ului:', error);

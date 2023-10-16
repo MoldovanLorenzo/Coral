@@ -3,21 +3,26 @@ import { View, Text, FlatList, TouchableOpacity } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { FontAwesome } from '@expo/vector-icons';
 import AsyncStorage from "@react-native-async-storage/async-storage";
-
+import useGlobalBackHandler from '../hooks/useGlobalBackHandler';
 const HomeScreen = () => {
   const navigation = useNavigation();
   const [activeTab, setActiveTab] = useState('friends');
   let authToken = null;
   const [friendsData, setFriendsData] = useState([]);
   const [chatRooms, setChatRooms] = useState([]);
-
+  useGlobalBackHandler();
   useEffect(() => {
     const checkAuthToken = async () => {
       try {
-        authToken = await AsyncStorage.getItem('authToken');
+        authToken = await AsyncStorage.getItem('auth_token');
         console.log(authToken);
+        if(authToken==null){
+          navigation.navigate('Login', { message: 'Null token' });
+          return;
+        }
       } catch (error) {
-        console.error('Eroare la retragerea token-ului:', error);
+        navigation.navigate('Login', { message: 'Unknown error when retrieving from AsyncStorage' });
+        return;
       }
     };
 
@@ -35,6 +40,14 @@ const HomeScreen = () => {
         .then((response) => response.json())
         .then(async (responseData) => {
           console.log("Response from server:", responseData);
+          try{
+            if(responseData.response.includes("NOK")){
+              navigation.navigate('Login', { message: 'Expired session, please log in again' });
+              return;
+            }
+
+          }catch{
+          }
           const friendsData = responseData.filter(data => data.is_friends_chatroom === true);
           const chatRooms = responseData.filter(data => data.is_friends_chatroom === false);
 
@@ -43,6 +56,7 @@ const HomeScreen = () => {
         })
         .catch((error) => {
           console.error("Eroare de rețea:", error);
+          return;
         })
     );
   }, [navigation]);
@@ -81,6 +95,7 @@ const HomeScreen = () => {
       </View>
 
       <View style={{ flexDirection: 'row', width: 250, alignSelf: 'center', borderRadius: 23, backgroundColor: 'lightgray' }}>
+      </View>
       <View style={{ flexDirection: 'row', width: 250, alignSelf: 'center', borderRadius: 23,backgroundColor:'lightgray' }}>
         <TouchableOpacity
           onPress={() => setActiveTab('friends')}
@@ -103,7 +118,6 @@ const HomeScreen = () => {
           <Text style={{ padding: 16, textAlign: 'center', fontWeight: activeTab === 'chatRooms' ? 'bold' : 'normal' }}>Chat Rooms</Text>
         </TouchableOpacity>
       </View>
-
       {activeTab === 'friends' && (
         <FlatList
           data={friendsData}
