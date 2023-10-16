@@ -28,7 +28,8 @@
     "react-native-linear-gradient": "^2.8.3",
     "react-native-modal-dropdown": "^1.0.2",
     "react-native-picker-select": "^8.1.0",
-    "react-navigation-header-buttons": "^11.0.1"
+    "react-navigation-header-buttons": "^11.0.1",
+    "socket.io-client": "^4.7.2"
   },
   "devDependencies": {
     "@babel/core": "^7.20.0"

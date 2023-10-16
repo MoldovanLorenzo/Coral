@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useRoute } from '@react-navigation/native';
 import { View, Text, TextInput, TouchableOpacity } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useNavigation } from "@react-navigation/native";
@@ -8,10 +9,11 @@ export default function Login() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const navigation = useNavigation();
-
+  const route = useRoute();
+  const message = route.params?.message;
   const handleLogin = () => {
     const serverUrl = "http://simondarius.pythonanywhere.com/login";
-
+    
     const data = {
       username: username,
       password: password,
@@ -29,8 +31,8 @@ export default function Login() {
         console.log("Răspuns de la server:", responseData);
 
         if (responseData.response === "OK" && responseData.auth_token) {
-          await AsyncStorage.setItem("auth_token", responseData.auth_token);
-          navigation.navigate('Home');
+          console.log(responseData.auth_token);
+          AsyncStorage.setItem("auth_token", responseData.auth_token).then(()=>{navigation.navigate('Home');})
         } else {
           setError("Eroare la autentificare. Verificați datele introduse.");
         }
@@ -84,6 +86,11 @@ export default function Login() {
           }}
           onChangeText={(text) => setPassword(text)}
         />
+        {message && (
+        <Text style={{ color: 'red', margin: 20, alignSelf: 'center' }}>
+          {message}
+        </Text>
+      )}
         <TouchableOpacity onPress={handleLogin} style={{alignSelf:'center',backgroundColor:'#ff9a00',paddingVertical:15,paddingHorizontal:60,borderRadius:10,marginTop:40}}>
           <Text>Login</Text>
         </TouchableOpacity>

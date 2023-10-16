@@ -1,6 +1,7 @@
 import React, { Component } from 'react';
 import { View, Text, FlatList, TextInput,TouchableOpacity } from 'react-native';
 import { FontAwesome } from '@expo/vector-icons';
+import io from 'socket.io-client';
 class FriendChat extends Component {
   constructor(props) {
     super(props);
@@ -8,13 +9,42 @@ class FriendChat extends Component {
       messages: [],
       newMessage: '',
     };
+    this.socket = io('http://simondarius.pythonanywhere.com ');
+  }
+  componentDidMount() {
+    this.socket.on('connect', () => {
+      console.log('Connected to Socket.IO server');
+      this.socket.emit('connection_token', JSON.stringify({ socket_message: 'your-token-here' }));
+    });
+
+    this.socket.on('connect_ACK', (message) => {
+      console.log('ACK received:', message);
+    });
+
+    this.socket.on('message', (message) => {
+      console.log('Message received:', message);
+      this.setState((prevState) => ({
+        messages: [...prevState.messages, JSON.parse(message)]
+      }));
+    });
   }
 
+  componentWillUnmount() {
+    this.socket.close();
+  }
   addMessage = () => {
-    const { messages, newMessage } = this.state;
+    const { newMessage } = this.state;
     if (newMessage.trim() !== '') {
-      const updatedMessages = [...messages, { text: newMessage }];
-      this.setState({ messages: updatedMessages, newMessage: '' });
+      const messageData = {
+        user_message: newMessage,
+        user_chatroom: 'chatroom-id',  
+      };
+      this.socket.emit('message', JSON.stringify(messageData));
+
+      this.setState((prevState) => ({
+        messages: [...prevState.messages, { text: newMessage }],
+        newMessage: ''
+      }));
     }
   };
 
