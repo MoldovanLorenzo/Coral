@@ -4,12 +4,14 @@ import { useNavigation } from '@react-navigation/native';
 import { FontAwesome } from '@expo/vector-icons';
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import useGlobalBackHandler from '../hooks/useGlobalBackHandler';
+import io from 'socket.io-client';
 const HomeScreen = () => {
   const navigation = useNavigation();
   const [activeTab, setActiveTab] = useState('friends');
   let authToken = null;
   const [friendsData, setFriendsData] = useState([]);
   const [chatRooms, setChatRooms] = useState([]);
+  const socket=io("http://simondarius.pythonanywhere.com");
   useGlobalBackHandler();
   useEffect(() => {
     const checkAuthToken = async () => {
@@ -25,7 +27,7 @@ const HomeScreen = () => {
         return;
       }
     };
-
+    
     checkAuthToken().then(() =>
       fetch("http://simondarius.pythonanywhere.com/chatrooms", {
         method: "POST",
@@ -59,6 +61,19 @@ const HomeScreen = () => {
           return;
         })
     );
+    socket.emit('connection_token', JSON.stringify({socket_message:authToken}));
+    socket.on('connect_clear', (message) => {
+      console.log('Succesfully connected to Socket.IO server');
+      console.log(message);
+    })
+    socket.on('connect_fail', (message) => {
+      console.log('Failed connecting to Socket.IO server');
+      console.log(message);
+    })
+    socket.on('message', (message) => {
+      console.log('Message received:', message);
+    });
+
   }, [navigation]);
 
   const handleFriendSelection = (friend) => {
