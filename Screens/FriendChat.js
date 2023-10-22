@@ -3,6 +3,8 @@ import { View, Text, FlatList, TextInput,TouchableOpacity } from 'react-native';
 import { FontAwesome } from '@expo/vector-icons';
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useNavigation } from '@react-navigation/native';
+const auth_token=await AsyncStorage.getItem('auth_token');
+
 class FriendChat extends Component {
   constructor(props) {
     super(props);
@@ -10,17 +12,21 @@ class FriendChat extends Component {
       messages: [],
       newMessage: '',
     };
+    this.chatroom_id=this.props.route.params.friend.chatroom_id;
   }
   
   addMessage = () => {
+
     const { newMessage } = this.state;
+    console.log('Sending message: '+ newMessage +' to chatroom of id: '+ this.chatroom_id)
     if (newMessage.trim() !== '') {
       const messageData = {
         user_message: newMessage,
-        user_chatroom: 'chatroom-id',
+        user_chatroom: this.chatroom_id,
+        
       };
       
-      console.log('emitted message');
+      console.log('sent_message');
       this.setState((prevState) => ({
         messages: [...prevState.messages, { text: newMessage }],
         newMessage: ''

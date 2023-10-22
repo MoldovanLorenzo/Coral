@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { View, Text, TouchableOpacity, TextInput, StyleSheet, FlatList, Image } from 'react-native';
 import { FontAwesome } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
-import AsyncStorage from "@react-native-async-storage/async-storage"; // Păstrăm importul AsyncStorage
+import AsyncStorage from "@react-native-async-storage/async-storage"; 
 
 const FriendsFinder = () => {
   const navigation = useNavigation();
@@ -16,14 +16,14 @@ const FriendsFinder = () => {
     try {
       const checkAuthToken = async () => {
         try {
-          authToken = await AsyncStorage.getItem('authToken');
+          authToken = await AsyncStorage.getItem('auth_token');
           console.log(authToken);
         } catch (error) {
           console.error('Eroare la retragerea token-ului:', error);
         }
       };
       checkAuthToken().then(() =>
-        fetch("http://simondarius.pythonanywhere.com/users", {
+        fetch("https://copper-pattern-402806.ew.r.appspot.com/users", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
