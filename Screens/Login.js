@@ -12,7 +12,7 @@ export default function Login() {
   const route = useRoute();
   const message = route.params?.message;
   const handleLogin = () => {
-    const serverUrl = "http://simondarius.pythonanywhere.com/login";
+    const serverUrl = "https://copper-pattern-402806.ew.r.appspot.com/login";
     
     const data = {
       username: username,
@@ -52,8 +52,7 @@ export default function Login() {
           alignSelf: "center",
           marginTop: 130,
           borderRadius: 30,
-          borderBottomLeftRadius: 0,
-          borderBottomRightRadius: 0,
+          
         }}
       >
         <Text
@@ -94,6 +93,17 @@ export default function Login() {
         <TouchableOpacity onPress={handleLogin} style={{alignSelf:'center',backgroundColor:'#ff9a00',paddingVertical:15,paddingHorizontal:60,borderRadius:10,marginTop:40}}>
           <Text>Login</Text>
         </TouchableOpacity>
+        <View style={{alignSelf:'center', marginTop:20}}>
+        <Text style={{ color: 'black' }}>
+          No account?{' '}
+          <Text
+            style={{ color: '#ff9a00' }}
+            onPress={() => navigation.navigate('Singup')}  // Add the navigation function here
+          >
+            Sign up
+          </Text>
+        </Text>
+       </View>
       </View>
     </View>
   );
