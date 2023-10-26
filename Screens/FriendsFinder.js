@@ -11,6 +11,9 @@ const FriendsFinder = () => {
   const handleNavigateHome = () => {
     navigation.navigate('Home');
   };
+  const handleFriendsRequestScreen=()=>{
+    navigation.navigate('Request');
+  }
 
   const handleSearch = async () => {
     try {
@@ -53,11 +56,14 @@ const FriendsFinder = () => {
     <View style={styles.container}>
       <View style={styles.header}>
         <TouchableOpacity onPress={handleNavigateHome}>
-          <FontAwesome name="arrow-left" size={24} color="black" />
+          <FontAwesome name="angle-left" size={30} color="#ff9a00" />
         </TouchableOpacity>
         <View style={styles.headerTextContainer}>
           <Text style={styles.headerText}>Add Friends</Text>
         </View>
+        <TouchableOpacity onPress={handleFriendsRequestScreen}>
+        <FontAwesome name="user" size={24} color="#ff9a00" />
+        </TouchableOpacity>
       </View>
       <View style={styles.inputContainer}>
         <TextInput
@@ -77,8 +83,11 @@ const FriendsFinder = () => {
             <Image source={{ uri: item.avatar }} style={styles.avatar} />
             <View>
               <Text style={styles.friendName}>{item.username}</Text>
-              <Text>{item.id}</Text>
+              <Text style={{color:'lightgray',fontSize:10}}>{item.id}</Text>
             </View>
+            <TouchableOpacity style={{justifyContent:'flex-end'}}>
+            <FontAwesome name="plus" size={20} color="#ff9a00" />
+           </TouchableOpacity>
           </View>
         )}
         keyExtractor={(item) => item.id.toString()}
@@ -95,9 +104,9 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    padding: 20,
+    padding: 30,
     alignItems: 'center',
-    backgroundColor: '#ff9a00',
+    backgroundColor: 'white',
   },
   headerTextContainer: {
     flex: 1,
@@ -105,7 +114,8 @@ const styles = StyleSheet.create({
   },
   headerText: {
     fontSize: 20,
-    alignSelf: 'center'
+    alignSelf: 'center',
+    fontWeight:'bold'
   },
   inputContainer: {
     marginTop: 10,
@@ -129,7 +139,8 @@ const styles = StyleSheet.create({
   friendItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 10,
+    justifyContent:'space-between',
+    padding: 15,
     borderBottomWidth: 1,
     borderBottomColor: 'gray',
   },

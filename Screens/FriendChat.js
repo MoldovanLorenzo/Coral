@@ -3,7 +3,12 @@ import { View, Text, FlatList, TextInput,TouchableOpacity } from 'react-native';
 import { FontAwesome } from '@expo/vector-icons';
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useNavigation } from '@react-navigation/native';
-const auth_token=await AsyncStorage.getItem('auth_token');
+import { useSocket } from '../hooks/socketInstance';
+let auth_token;
+
+(async () => {
+  auth_token = await AsyncStorage.getItem('auth_token');
+})();
 
 class FriendChat extends Component {
   constructor(props) {
@@ -13,6 +18,8 @@ class FriendChat extends Component {
       newMessage: '',
     };
     this.chatroom_id=this.props.route.params.friend.chatroom_id;
+    this.socket=useSocket();
+    
   }
   
   addMessage = () => {
