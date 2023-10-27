@@ -76,15 +76,16 @@ export default function Login() {
           onChangeText={(text) => setUsername(text)}
         />
         <TextInput
-          placeholder="Password"
-          style={{
-            padding: 10,
-            borderBottomWidth: 1,
-            borderBottomColor: "gray",
-            margin: 20,
-          }}
-          onChangeText={(text) => setPassword(text)}
-        />
+  placeholder="Password"
+  style={{
+    padding: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: "gray",
+    margin: 20,
+  }}
+  onChangeText={(text) => setPassword(text)}
+  secureTextEntry 
+/>
         {message && (
         <Text style={{ color: 'red', margin: 20, alignSelf: 'center' }}>
           {message}
@@ -98,7 +99,7 @@ export default function Login() {
           No account?{' '}
           <Text
             style={{ color: '#ff9a00' }}
-            onPress={() => navigation.navigate('Singup')}  // Add the navigation function here
+            onPress={() => navigation.navigate('Singup')}
           >
             Sign up
           </Text>

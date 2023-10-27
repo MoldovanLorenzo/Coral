@@ -16,6 +16,7 @@ import Feedbad from "./Screens/SettingsScreens/Feedbad";
 import Themes from "./Screens/SettingsScreens/Themes";
 import Notifications from "./Screens/SettingsScreens/Notifications";
 import Language from "./Screens/SettingsScreens/Language";
+import FrinendsRequestScreen from"./Screens/FriendsReqestScreen"
 
 const Stack = createStackNavigator();
 
@@ -160,6 +161,17 @@ const App = () => {
             />
           )}
           options={{ headerShown: false }}
+        />
+        <Stack.Screen
+        name="Request"
+        children={(props) => (
+          <FrinendsRequestScreen
+            {...props}
+            isDarkMode={isDarkMode}
+            setIsDarkMode={setIsDarkMode}
+         />
+        )}
+        options={{headerShown: false}}
         />
       </Stack.Navigator>
     </NavigationContainer>

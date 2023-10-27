@@ -2,12 +2,23 @@ import React from "react";
 import { View, Text, Switch, TouchableOpacity} from "react-native";
 import { FontAwesome } from '@expo/vector-icons';
 import { useNavigation } from "@react-navigation/native";
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function Themes({ isDarkMode, setIsDarkMode }) {
   const navigation = useNavigation();
   const toggleSwitch = () => {
-    setIsDarkMode((previousState) => !previousState);
-  }
+    setIsDarkMode((previousState) => {
+      const newDarkModeState = !previousState;
+      AsyncStorage.setItem('darkMode', JSON.stringify(newDarkModeState))
+        .then(() => {
+          console.log('Dark mode state saved');
+        })
+        .catch((error) => {
+          console.error('Error saving dark mode state: ', error);
+        });
+      return newDarkModeState;
+    });
+  };
   const handleSettingsSelection = () => {
     navigation.navigate('Settings');
   }
@@ -18,7 +29,7 @@ export default function Themes({ isDarkMode, setIsDarkMode }) {
     <TouchableOpacity onPress={handleSettingsSelection} style={{alignSelft:'flex-start'}}>
     <FontAwesome name="angle-left" size={34} color="#ff9a00" />
   </TouchableOpacity>
-    <Text style={{fontWeight: 'bold', color: isDarkMode ? 'white' : 'black',fontSize:20,}}>Themes</Text>
+    <Text style={{fontWeight: 'bold', color: isDarkMode ? 'white' : 'black',fontSize:20}}>Themes</Text>
     <TouchableOpacity><Text style={{color: isDarkMode ? '#191919' : 'white'}}>...</Text></TouchableOpacity>
     </View>
       <View
@@ -47,3 +58,4 @@ export default function Themes({ isDarkMode, setIsDarkMode }) {
     </View>
   );
 }
+
