@@ -1,39 +1,33 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, FlatList, TouchableOpacity } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, Image} from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { FontAwesome } from '@expo/vector-icons';
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import useGlobalBackHandler from '../hooks/useGlobalBackHandler';
-import io from 'socket.io-client';
-  import { useSocket, SocketProvider } from '../hooks/socketInstance';
+import Flag from 'react-native-flags';
+import { useSocket, SocketProvider } from '../hooks/socketInstance';
   const HomeScreen = ({ isDarkMode, setIsDarkMode }) => {
     const navigation = useNavigation();
     const [activeTab, setActiveTab] = useState('friends');
     let authToken = null;
-    const [socket, setSocket] = useState(null);
+    const socket=useSocket()
     const [friendsData, setFriendsData] = useState([]);
-    const [chatRooms, setChatRooms] = useState([]);
+    const getFlagCode = (language) => {
+      const languageToCodeMapping = {
+        Spanish: 'ES',
+        English:'GB' 
+      };
+      return languageToCodeMapping[language] || 'EU'; 
+    };
     useGlobalBackHandler();
+    
     useEffect(() => {
+      console.log("ENTERED USE EFFECT OF HOME SCREEN!")
       const checkAuthToken = async () => {
         try {
           authToken = await AsyncStorage.getItem('auth_token');
           console.log(authToken);
-          const newSocket = io("http://192.168.100.132:10000", {
-          transports: ['websocket'],
-          jsonp: false 
-          });
-
-        newSocket.on('connection_ACK', () => {
-          console.log('ACK received from socket');
-        });
-        newSocket.on('message',()=>{
-          console.log('message recieved');
-        })
-
-          newSocket.connect();
-          setSocket(newSocket);
-          console.log('connected to socket')
+        
           if(authToken==null){
             navigation.navigate('Login', { message: 'Null token' });
             return;
@@ -66,11 +60,12 @@ import io from 'socket.io-client';
 
             }catch{
             }
-            const friendsData = responseData.filter(data => data.is_friends_chatroom === true);
-            const chatRooms = responseData.filter(data => data.is_friends_chatroom === false);
-            console.log(friendsData)
-            setFriendsData(friendsData);
-            setChatRooms(chatRooms);
+            const newData = responseData
+            newData.forEach(element => {
+              socket.emit('join_room',{"room":element.chatroom_id})
+            });
+            setFriendsData(newData);
+            
           })
           .catch((error) => {
             console.error("Eroare de rețea:", error);
@@ -79,21 +74,8 @@ import io from 'socket.io-client';
       );
       
     }, [navigation]);
-    useEffect(() => {
-      if (socket && friendsData.length > 0) {
-          friendsData.forEach(element => {
-              socket.emit('join_room', element.id);
-              console.log('Emitted join for id:');
-              console.log(element.id);
-          });
-      }
-  }, [socket, friendsData]);
     const handleFriendSelection = (friend) => {
-      navigation.navigate('FriendChat', {friend});
-    };
-
-    const handleChatRoomSelection = (chatRoom) => {
-      navigation.navigate('ChatRoom', { chatRoom });
+      navigation.navigate('FriendChat', {friend,authToken});
     };
 
     const handleSettingsSelection = () => {
@@ -105,7 +87,6 @@ import io from 'socket.io-client';
     };
 
   return (
-    <SocketProvider value={socket}>
       <View style={{ flex: 1, backgroundColor: isDarkMode ? '#191919' : 'white' }}>
         <View style={{ flexDirection: 'row' }}>
           <TouchableOpacity onPress={handleFriendsFinderSelection} style={{ alignSelf: 'center', position: 'relative', left: 20 }}>
@@ -164,17 +145,22 @@ import io from 'socket.io-client';
                   borderColor:isDarkMode ? 'gray' : 'lightgray',
                   borderWidth: 2,
                 }}>
-                  <View style={{
-                    width: 50,
-                    height: 50,
-                    borderRadius: 25,
-                    backgroundColor: 'white',
-                    marginRight: 10,
-                  }}>
+                  <View>
+                  <Image
+                       source={item.other_user.user_image ? { uri: "data:image/jpeg;base64"+item.other_user.user_image } : require('../assets/default_user.png')}style={{
+                        width: 50,
+                        height: 50,
+                        borderRadius: 25,
+                        marginRight: 10,
+                      }}/>
+                  <Flag code={getFlagCode(item.preffered_language)} size={16} style={{
+                    position: 'absolute',
+                    bottom: 0,
+                    right: 5,}}/>
                   </View>
 
                   <View style={{ flex: 1 }}>
-                    <Text style={{ fontWeight: 'bold', marginBottom: 5,color: isDarkMode ? 'gray' : 'black' }}>{item.name}</Text>
+                    <Text style={{ fontWeight: 'bold', marginBottom: 5,color: isDarkMode ? 'gray' : 'black' }}>{item.other_user.username}</Text>
                     <Text style={{color: isDarkMode ? 'gray' : 'black'}}>Ultimul mesaj trimis</Text>
                   </View>
                 </View>
@@ -190,7 +176,6 @@ import io from 'socket.io-client';
           </FlatList>
         )}
       </View>
-    </SocketProvider>
   );
   };
 

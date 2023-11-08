@@ -17,6 +17,8 @@ import Themes from "./Screens/SettingsScreens/Themes";
 import Notifications from "./Screens/SettingsScreens/Notifications";
 import Language from "./Screens/SettingsScreens/Language";
 import FrinendsRequestScreen from"./Screens/FriendsReqestScreen"
+import { SocketProvider } from "./hooks/socketInstance";
+import { Socket } from "socket.io-client";
 
 const Stack = createStackNavigator();
 
@@ -24,6 +26,7 @@ const App = () => {
   const [isDarkMode, setIsDarkMode] = useState(false);
 
   return (
+    <SocketProvider>
     <NavigationContainer>
       <Stack.Navigator>
         <Stack.Screen
@@ -175,6 +178,7 @@ const App = () => {
         />
       </Stack.Navigator>
     </NavigationContainer>
+    </SocketProvider>
   );
 };
 

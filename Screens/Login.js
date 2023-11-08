@@ -32,7 +32,16 @@ export default function Login() {
 
         if (responseData.response === "OK" && responseData.auth_token) {
           console.log(responseData.auth_token);
-          AsyncStorage.setItem("auth_token", responseData.auth_token).then(()=>{navigation.navigate('Home');})
+          setInfo=async () =>{
+            await AsyncStorage.setItem("auth_token", responseData.auth_token)
+            await AsyncStorage.setItem("user_username",responseData.username)
+            await AsyncStorage.setItem("user_language",responseData.preffered_language)
+            await AsyncStorage.setItem("user_id",responseData.id)
+            if(responseData.user_image!=null){
+            await AsyncStorage.setItem("user_photo",responseData.user_image)
+            }
+          }
+          setInfo().then(()=>{navigation.navigate('Home');})
         } else {
           setError("Eroare la autentificare. Verificați datele introduse.");
         }
