@@ -58,9 +58,8 @@ export default function FriendsRequestScreen({ isDarkMode, setIsDarkMode }) {
         {/* Profile Picture and Flag */}
         <View style={styles.profilePictureContainer}>
           <Image
-            source={item.user_image ? { uri: item.user_image } : require('../assets/default_user.png')}
-            style={styles.avatar}
-          />
+            source={item.user_image ? { uri: "data:image/jpeg;base64,"+item.user_image } : require('../assets/default_user.png')}
+            style={styles.avatar}/>
         
           <View style={styles.flagContainer}>
               <Flag code={getFlagCode(item.preffered_language)} size={16} />

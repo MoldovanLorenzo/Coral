@@ -41,7 +41,7 @@ export default function Login() {
             await AsyncStorage.setItem("user_photo",responseData.user_image)
             }
           }
-          setInfo().then(()=>{navigation.navigate('Home');})
+          setInfo().then(()=>{navigation.navigate('Home',{fetchFlag:true});})
         } else {
           setError("Eroare la autentificare. Verificați datele introduse.");
         }

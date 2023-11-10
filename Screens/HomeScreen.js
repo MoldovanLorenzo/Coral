@@ -6,12 +6,101 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import useGlobalBackHandler from '../hooks/useGlobalBackHandler';
 import Flag from 'react-native-flags';
 import { useSocket, SocketProvider } from '../hooks/socketInstance';
-  const HomeScreen = ({ isDarkMode, setIsDarkMode }) => {
+
+import { useIsFocused } from '@react-navigation/native';
+const HomeScreen = ({ isDarkMode, setIsDarkMode }) => {
     const navigation = useNavigation();
+
     const [activeTab, setActiveTab] = useState('friends');
     let authToken = null;
     const socket=useSocket()
     const [friendsData, setFriendsData] = useState([]);
+    const isFocused = useIsFocused();
+    const fetchData = async () => {
+      try {
+        const authToken = await AsyncStorage.getItem('auth_token');
+        if (!authToken) {
+          navigation.navigate('Login', { message: 'Null token' });
+          return;
+        }
+  
+        const response = await fetch("https://copper-pattern-402806.ew.r.appspot.com/chatrooms", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": authToken,
+          },
+          body: JSON.stringify({
+            "what": "getChatroomsFromUser",
+          }),
+        });
+  
+        const serverChatrooms = await response.json();
+        
+  
+        if ('response' in serverChatrooms && serverChatrooms.response.includes("NOK")) {
+          navigation.navigate('Login', { message: 'Expired session, please log in again' });
+          return;
+        }
+        setFriendsData(serverChatrooms)
+        /*const insert_and_del= async () => {
+          db.transaction(tx => {
+          serverChatrooms.forEach(serverChatroom => {
+            tx.executeSql(
+              `INSERT OR REPLACE INTO chatroom (id, name, language, photo) VALUES (?, ?, ?, ?);`,
+              [serverChatroom.chatroom_id, serverChatroom.other_user.username, "none", serverChatroom.user_image],
+              null,
+              error => console.log("Error upserting chatroom" ,error)
+            );
+          }) 
+          tx.executeSql(
+            `SELECT id FROM chatroom;`,
+            [],
+            (_, { rows }) => {
+              rows._array.forEach(localChatroom => {
+                if (!serverChatrooms.some(serverChatroom => serverChatroom.id === localChatroom.id)) {
+                  tx.executeSql(
+                    `DELETE FROM chatroom WHERE id = ?;`,
+                    [localChatroom.id],
+                    null,
+                    error => console.log("Error deleting chatroom",error)
+                  );
+                }
+              });
+            },
+            error => console.log("Error selecting chatrooms", error)
+          );
+        })
+        }
+        insert_and_del().then(()=>{
+          db.transaction(tx=>{
+            tx.executeSql(
+              `SELECT * FROM chatroom;`,
+              [],
+              (_, { rows }) => {
+                const updatedChatrooms = rows._array;
+                console.log('HERE')
+                console.log(updatedChatrooms)
+                setFriendsData(updatedChatrooms);
+    
+                const existingChatroomIds = new Set(friendsData.map(chatroom => chatroom.id));
+                updatedChatrooms.forEach(chatroom => {
+                  if (!existingChatroomIds.has(chatroom.id)) {
+                    socket.emit('join_room', { "room": chatroom.id });
+                  }
+                });
+              },
+              error => console.log("Error selecting updated chatrooms", error)
+            );
+          })
+        })*/
+        
+
+      } catch (error) {
+        console.error("Eroare de rețea:", error);
+        navigation.navigate('Login', { message: 'Network error' });
+      }
+    };
     const getFlagCode = (language) => {
       const languageToCodeMapping = {
         Spanish: 'ES',
@@ -22,58 +111,10 @@ import { useSocket, SocketProvider } from '../hooks/socketInstance';
     useGlobalBackHandler();
     
     useEffect(() => {
-      console.log("ENTERED USE EFFECT OF HOME SCREEN!")
-      const checkAuthToken = async () => {
-        try {
-          authToken = await AsyncStorage.getItem('auth_token');
-          console.log(authToken);
-        
-          if(authToken==null){
-            navigation.navigate('Login', { message: 'Null token' });
-            return;
-          }
-        } catch (error) {
-          navigation.navigate('Login', { message: 'Unknown error when retrieving from AsyncStorage' });
-          return;
-        }
-      };
-      
-      checkAuthToken().then(() =>
-        fetch("https://copper-pattern-402806.ew.r.appspot.com/chatrooms", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": authToken,
-          },
-          body: JSON.stringify({
-            "what": "getChatroomsFromUser",
-          }),
-        })
-          .then((response) => response.json())
-          .then(async (responseData) => {
-            console.log("Response from server:", responseData);
-            try{
-              if(responseData.response.includes("NOK")){
-                navigation.navigate('Login', { message: 'Expired session, please log in again' });
-                return;
-              }
-
-            }catch{
-            }
-            const newData = responseData
-            newData.forEach(element => {
-              socket.emit('join_room',{"room":element.chatroom_id})
-            });
-            setFriendsData(newData);
-            
-          })
-          .catch((error) => {
-            console.error("Eroare de rețea:", error);
-            return;
-          })
-      );
-      
-    }, [navigation]);
+      if (isFocused) {
+       fetchData();
+    }
+   }, [isFocused]);
     const handleFriendSelection = (friend) => {
       navigation.navigate('FriendChat', {friend,authToken});
     };
@@ -117,14 +158,24 @@ import { useSocket, SocketProvider } from '../hooks/socketInstance';
             <Text style={{ padding: 16, textAlign: 'center', fontWeight: activeTab === 'friends' ? 'bold' : 'normal' }}>Friends</Text>
           </TouchableOpacity>
           <TouchableOpacity
-            onPress={() => setActiveTab('chatRooms')}
+            onPress={() => {}}
             style={{
               flex: 1,
               backgroundColor: activeTab === 'chatRooms' ? '#ff9a00' : 'lightgray',
               borderRadius: 20,
-            }}
-          >
-            <Text style={{ padding: 16, textAlign: 'center', fontWeight: activeTab === 'chatRooms' ? 'bold' : 'normal' }}>Chat Rooms</Text>
+            }}>
+            <Text style={{ padding: 16, textAlign: 'center',color:'#808080',fontWeight: activeTab === 'chatRooms' ? 'bold' : 'normal' }}>Chat Rooms</Text>
+            <Image
+            source={require('../assets/coming_soon.png')}
+            style={
+              {
+                width:55,
+                height:55,
+                position:'absolute',
+                top:-17,
+                right:-17
+              }
+            }/>
           </TouchableOpacity>
         </View>
         {activeTab === 'friends' && (
@@ -147,13 +198,13 @@ import { useSocket, SocketProvider } from '../hooks/socketInstance';
                 }}>
                   <View>
                   <Image
-                       source={item.other_user.user_image ? { uri: "data:image/jpeg;base64"+item.other_user.user_image } : require('../assets/default_user.png')}style={{
+                       source={item.other_user.user_image ? { uri: "data:image/jpeg;base64,"+item.other_user.user_image } : require('../assets/default_user.png')}style={{
                         width: 50,
                         height: 50,
                         borderRadius: 25,
                         marginRight: 10,
                       }}/>
-                  <Flag code={getFlagCode(item.preffered_language)} size={16} style={{
+                  <Flag code={getFlagCode(item.other_user.preffered_language)} size={16} style={{
                     position: 'absolute',
                     bottom: 0,
                     right: 5,}}/>
@@ -166,7 +217,7 @@ import { useSocket, SocketProvider } from '../hooks/socketInstance';
                 </View>
               </TouchableOpacity>
             )}
-            keyExtractor={(item) => item.id}
+            keyExtractor={(item) => item.chatroom_id}
           />
         )}
 

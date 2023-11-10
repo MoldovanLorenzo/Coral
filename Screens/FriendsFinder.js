@@ -142,6 +142,15 @@ const FriendsFinder = () => {
           </TouchableOpacity>
         );
         break;
+      case "friends":
+        button = (
+          <TouchableOpacity style={{ justifyContent: 'flex-end' }} onPress={()=>{
+            navigation.navigate('Home')
+          }}>
+            <FontAwesome name="group" size={20} color="lightgray" />
+          </TouchableOpacity>
+        );
+      break;
       default:
         button = null; 
     }

@@ -3,7 +3,6 @@ import { View, Text, TouchableOpacity, ScrollView,Image} from 'react-native';
 import { FontAwesome } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { launchCamera, launchImageLibrary } from 'react-native-image-picker';
 import * as ImagePicker from 'expo-image-picker';
 import * as ImageManipulator from 'expo-image-manipulator';
 export default function Settings({ isDarkMode, setIsDarkMode }) {
@@ -71,6 +70,10 @@ const handleProfileSelection = async () => {
     }).then((response) => response.json())
     .then(async (responseData) => {
       console.log("Response from server:", responseData);
+      if(responseData.response=='OK'){
+        await AsyncStorage.setItem('user_photo',resizedImage.base64)
+        setPhoto(resizedImage.base64)
+      }
     })
     .catch((error) => {
       console.error("Eroare de rețea:", error);
