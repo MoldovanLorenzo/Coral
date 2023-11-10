@@ -6,11 +6,11 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import useGlobalBackHandler from '../hooks/useGlobalBackHandler';
 import Flag from 'react-native-flags';
 import { useSocket, SocketProvider } from '../hooks/socketInstance';
-
+import * as SQLite from 'expo-sqlite';
 import { useIsFocused } from '@react-navigation/native';
-const HomeScreen = ({ isDarkMode, setIsDarkMode }) => {
+const HomeScreen = ({ isDarkMode, setIsDarkMode, route}) => {
     const navigation = useNavigation();
-
+    const db = SQLite.openDatabase("CoralCache.db");
     const [activeTab, setActiveTab] = useState('friends');
     let authToken = null;
     const socket=useSocket()
@@ -36,19 +36,18 @@ const HomeScreen = ({ isDarkMode, setIsDarkMode }) => {
         });
   
         const serverChatrooms = await response.json();
-        
   
         if ('response' in serverChatrooms && serverChatrooms.response.includes("NOK")) {
           navigation.navigate('Login', { message: 'Expired session, please log in again' });
           return;
         }
-        setFriendsData(serverChatrooms)
-        /*const insert_and_del= async () => {
-          db.transaction(tx => {
+        
+        
+          await db.transaction(tx => {
           serverChatrooms.forEach(serverChatroom => {
             tx.executeSql(
               `INSERT OR REPLACE INTO chatroom (id, name, language, photo) VALUES (?, ?, ?, ?);`,
-              [serverChatroom.chatroom_id, serverChatroom.other_user.username, "none", serverChatroom.user_image],
+              [serverChatroom.chatroom_id, serverChatroom.other_user.username, serverChatroom.other_user.preffered_language, serverChatroom.other_user.user_image],
               null,
               error => console.log("Error upserting chatroom" ,error)
             );
@@ -58,7 +57,7 @@ const HomeScreen = ({ isDarkMode, setIsDarkMode }) => {
             [],
             (_, { rows }) => {
               rows._array.forEach(localChatroom => {
-                if (!serverChatrooms.some(serverChatroom => serverChatroom.id === localChatroom.id)) {
+                if (!serverChatrooms.some(serverChatroom => serverChatroom.chatroom_id === localChatroom.id)) {
                   tx.executeSql(
                     `DELETE FROM chatroom WHERE id = ?;`,
                     [localChatroom.id],
@@ -71,16 +70,14 @@ const HomeScreen = ({ isDarkMode, setIsDarkMode }) => {
             error => console.log("Error selecting chatrooms", error)
           );
         })
-        }
-        insert_and_del().then(()=>{
-          db.transaction(tx=>{
+        
+        
+        await db.transaction(tx=>{
             tx.executeSql(
               `SELECT * FROM chatroom;`,
               [],
               (_, { rows }) => {
                 const updatedChatrooms = rows._array;
-                console.log('HERE')
-                console.log(updatedChatrooms)
                 setFriendsData(updatedChatrooms);
     
                 const existingChatroomIds = new Set(friendsData.map(chatroom => chatroom.id));
@@ -93,7 +90,6 @@ const HomeScreen = ({ isDarkMode, setIsDarkMode }) => {
               error => console.log("Error selecting updated chatrooms", error)
             );
           })
-        })*/
         
 
       } catch (error) {
@@ -112,9 +108,14 @@ const HomeScreen = ({ isDarkMode, setIsDarkMode }) => {
     
     useEffect(() => {
       if (isFocused) {
-       fetchData();
+        const fetchFlag = route.params?.fetchFlag ?? false;
+        if (fetchFlag) {
+            fetchData();
+        } else {
+            
+        }
     }
-   }, [isFocused]);
+   }, [isFocused, route.params]);
     const handleFriendSelection = (friend) => {
       navigation.navigate('FriendChat', {friend,authToken});
     };
@@ -198,26 +199,26 @@ const HomeScreen = ({ isDarkMode, setIsDarkMode }) => {
                 }}>
                   <View>
                   <Image
-                       source={item.other_user.user_image ? { uri: "data:image/jpeg;base64,"+item.other_user.user_image } : require('../assets/default_user.png')}style={{
+                       source={item.photo ? { uri: "data:image/jpeg;base64,"+item.photo } : require('../assets/default_user.png')}style={{
                         width: 50,
                         height: 50,
                         borderRadius: 25,
                         marginRight: 10,
                       }}/>
-                  <Flag code={getFlagCode(item.other_user.preffered_language)} size={16} style={{
+                  <Flag code={getFlagCode(item.language)} size={16} style={{
                     position: 'absolute',
                     bottom: 0,
                     right: 5,}}/>
                   </View>
 
                   <View style={{ flex: 1 }}>
-                    <Text style={{ fontWeight: 'bold', marginBottom: 5,color: isDarkMode ? 'gray' : 'black' }}>{item.other_user.username}</Text>
+                    <Text style={{ fontWeight: 'bold', marginBottom: 5,color: isDarkMode ? 'gray' : 'black' }}>{item.name}</Text>
                     <Text style={{color: isDarkMode ? 'gray' : 'black'}}>Ultimul mesaj trimis</Text>
                   </View>
                 </View>
               </TouchableOpacity>
             )}
-            keyExtractor={(item) => item.chatroom_id}
+            keyExtractor={(item) => item.id}
           />
         )}
 

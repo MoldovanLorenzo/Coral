@@ -2,14 +2,14 @@ import React, { useEffect } from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as SQLite from 'expo-sqlite';
 export default function GetStarted() {
   
   const navigation = useNavigation();
-  
+  const db = SQLite.openDatabase("CoralCache.db");
   useEffect(() => {
-    /*const initializeDatabase = async () => {
+    const initializeDatabase = async () => {
       console.log('ENTERED INITIALIZE DATABASE LOGIC')
-      const db = SQLite.openDatabase("Coral.db");
       db.transaction(tx => {
         tx.executeSql(
           "CREATE TABLE IF NOT EXISTS chatroom (id TEXT PRIMARY KEY NOT NULL, name TEXT NOT NULL, language TEXT NOT NULL, photo TEXT);",
@@ -19,13 +19,13 @@ export default function GetStarted() {
         );
     
         tx.executeSql(
-          "CREATE TABLE IF NOT EXISTS message (id TEXT PRIMARY KEY NOT NULL, content TEXT NOT NULL, local_sender INTEGER NOT NULL, chatroom_id TEXT NOT NULL, FOREIGN KEY (chatroom_id) REFERENCES chatroom (id));",
+          "CREATE TABLE IF NOT EXISTS message (id TEXT PRIMARY KEY NOT NULL,content TEXT NOT NULL,local_sender INTEGER NOT NULL,chatroom_id TEXT NOT NULL,timestamp TEXT NOT NULL,FOREIGN KEY (chatroom_id) REFERENCES chatroom (id));",
           [],
           () => { console.log("Created message table"); },
           error => { console.log("Error creating message table", error); }
         );
       });
-    }*/
+    }
     const checkAuthToken = async () => {
       try {
         const authToken = await AsyncStorage.getItem('auth_token');
@@ -37,7 +37,7 @@ export default function GetStarted() {
         console.error('Eroare la verificarea token-ului:', error);
       }
     };
-    checkAuthToken();
+    initializeDatabase().then(()=>{checkAuthToken();});
   }, [navigation]);
 
   const handleSingupSelection = () => {

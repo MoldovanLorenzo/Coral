@@ -104,7 +104,9 @@ export default function FriendsRequestScreen({ isDarkMode, setIsDarkMode }) {
          }else{
           //WARN THE USER
           console.log(responseData)
-         } })
+         } }).then(()=>{
+          navigation.navigate('Home',{fetchFlag:true})
+         })
         .catch((error) => {
           console.error("Eroare de rețea:", error);
         });

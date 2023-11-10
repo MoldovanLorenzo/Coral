@@ -21,6 +21,7 @@
     "expo-image-manipulator": "~11.3.0",
     "expo-image-picker": "~14.3.2",
     "expo-splash-screen": "~0.20.5",
+    "expo-sqlite": "~11.3.3",
     "expo-status-bar": "~1.6.0",
     "i18n-js": "^4.3.2",
     "make-plural": "^7.3.0",
@@ -36,7 +37,8 @@
     "react-native-picker-select": "^8.1.0",
     "react-navigation-header-buttons": "^11.0.1",
     "realm": "^12.3.0",
-    "socket.io-client": "^4.7.2"
+    "socket.io-client": "^4.7.2",
+    "uuid": "^9.0.1"
   },
   "devDependencies": {
     "@babel/core": "^7.20.0",

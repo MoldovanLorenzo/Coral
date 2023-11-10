@@ -1,48 +1,100 @@
 import React, { useState, useEffect } from 'react';
-import { View, FlatList, Text, TouchableOpacity, TextInput } from 'react-native';
+import { View, FlatList, Text, TouchableOpacity, TextInput, StyleSheet } from 'react-native';
 import FontAwesome from 'react-native-vector-icons/FontAwesome';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons'
 import { SocketProvider, useSocket } from '../hooks/socketInstance';
 import { useNavigation } from '@react-navigation/native';
+import * as SQLite from 'expo-sqlite';
 
 const FriendChat = ({ route }) => {
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
-  const MESSAGE_STORAGE_KEY = 'messages';
   const navigation = useNavigation();
   const socket = useSocket();
+  const db = SQLite.openDatabase("CoralCache.db");
+  const chatroom_id = route.params.friend.id;
+  function generateUUID() {
+    let d = new Date().getTime();
+    const uuid = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+      const r = (d + Math.random() * 16) % 16 | 0;
+      d = Math.floor(d / 16);
+      return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
+    });
+    return uuid;
+  }
+  const prepareMessages = (messages) => {
+    const sortedMessages = messages.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+    const preparedMessages = [];
+    let lastDate = null;
   
-  const chatroom_id = route.params.friend.chatroom_id;
-  const saveMessages = async (messages) => {
-    try {
-      const jsonString = JSON.stringify(messages);
-      await AsyncStorage.setItem(MESSAGE_STORAGE_KEY, jsonString);
-    } catch (error) {
-      console.error('AsyncStorage Error: ' + error.message);
-    }
+    sortedMessages.forEach((message) => {
+      const messageDate = new Date(message.timestamp).toDateString();
+      if (messageDate !== lastDate) {
+        preparedMessages.push({ type: 'dateSeparator', date: messageDate });
+        lastDate = messageDate;
+      }
+      preparedMessages.push(message);
+    });
+  
+    return preparedMessages;
   };
-
+  const saveMessage = (newMessage, local) => {
+    return new Promise((resolve, reject) => {
+      const mirroredMessage = {
+        id: generateUUID(),
+        content: newMessage,
+        local_sender: local,
+        chatroom_id: chatroom_id,
+        timestamp: new Date().toISOString()
+      };
+      db.transaction(tx => {
+        tx.executeSql(
+          "INSERT INTO message (id, content, local_sender, chatroom_id, timestamp) VALUES (?, ?, ?, ?, ?);",
+          [mirroredMessage.id, mirroredMessage.content, mirroredMessage.local_sender, mirroredMessage.chatroom_id, mirroredMessage.timestamp],
+          () => {
+            console.log("Message saved");
+            resolve(mirroredMessage);
+          },
+          error => {
+            console.error("Error saving message", error);
+            reject(error);
+          }
+        );
+      });
+    });
+  };
+  
+  
   const loadMessages = async () => {
     try {
-      const jsonString = await AsyncStorage.getItem(MESSAGE_STORAGE_KEY);
-      const loadedMessages = jsonString != null ? JSON.parse(jsonString) : [];
-      setMessages(loadedMessages);
+      db.transaction(tx => {
+        tx.executeSql(
+          "SELECT * FROM message WHERE chatroom_id = ?;",
+          [chatroom_id],
+          (_, { rows }) => {
+            console.log(rows._array)
+            setMessages(rows._array);
+          },
+          error => { console.error("Error loading messages", error); }
+        );
+      });
     } catch (error) {
-      console.error('AsyncStorage Error: ' + error.message);
+      console.error('Database Error: ' + error.message);
     }
   };
-  const sendMessage = () => {
+  const sendMessage = async () => {
     if (newMessage.trim() !== '') {
       console.log('Sending message: ' + newMessage + ' to chatroom of id: ' + chatroom_id);
       socket.emit('message', {
         message: newMessage,
-        room: "main_room",
+        room: chatroom_id,
       });
+      mirroredMessage= await saveMessage(newMessage,1);
       setMessages((prevMessages) => {
-        const updatedMessages = [...prevMessages, { text: newMessage }];
-        saveMessages(updatedMessages); 
+        const updatedMessages = [...prevMessages, mirroredMessage];
         return updatedMessages;
       });
+      console.log(messages)
       setNewMessage('');
     }
   };
@@ -81,11 +133,11 @@ const FriendChat = ({ route }) => {
     };
     useEffect(() => {
       socket.on('user_message', (data) => {
-        translateText(data.message, 'es').then(translatedText => {
+        translateText(data.message, 'es').then( async (translatedText) => {
           console.log('The translation is:', translatedText);
+          mirroredMessage= await saveMessage(translatedText,0)
           setMessages((prevMessages) => {
-            const updatedMessages = [...prevMessages, { text: translatedText }];
-            saveMessages(updatedMessages); 
+            const updatedMessages = [...prevMessages, mirroredMessage];
             return updatedMessages;
           });
         });
@@ -100,27 +152,78 @@ const FriendChat = ({ route }) => {
         socket.off('user_message');
       };
     }, [socket]);
-
+    const renderChatItem = ({ item }) => {
+      const styles = StyleSheet.create({
+        messageContainer: {
+          flexDirection: 'row',
+          marginVertical: 5,
+          alignItems: 'center',
+        },
+        messageBubble: {
+          padding: 10,
+          borderRadius: 20,
+          maxWidth: '80%',
+        },
+        sentMessage: {
+          backgroundColor: 'orange',
+          marginLeft: 'auto',
+          marginRight: 10,
+        },
+        receivedMessage: {
+          backgroundColor: 'lightgray',
+          marginLeft: 10,
+        },
+        userName: {
+          fontSize: 14,
+        },
+        messageText: {
+          fontSize: 14,
+          color:'white',
+          
+        },
+      });
+      if (item.type === 'dateSeparator') {
+        // Render date separator
+        return (
+          <View style={{ alignItems: 'center', padding: 10 }}>
+            <Text style={{ fontSize: 12, color: 'lightgray' }}>{item.date}</Text>
+          </View>
+        );
+      } else {
+        // Render message
+        const isSentMessage = item.local_sender === 1;
+        return (
+          <View style={[
+            styles.messageContainer,
+            isSentMessage ? { justifyContent: 'flex-end' } : { justifyContent: 'flex-start' },
+          ]}>
+            <View style={[
+              styles.messageBubble,
+              isSentMessage ? styles.sentMessage : styles.receivedMessage
+            ]}>
+              <Text style={styles.messageText}>{item.content}</Text>
+            </View>
+          </View>
+        );
+      }
+    }
+    
   return (
     <View style={{ flex: 1 }}>
         <View style={{flexDirection: 'row', alignItems: 'center',justifyContent:'space-between',padding:30}}>
         <TouchableOpacity>
         <FontAwesome name="angle-left" size={30} color="#ff9a00" />
         </TouchableOpacity>
-        <Text>nume</Text>
+        <Text>{route.params.friend.name}</Text>
         <TouchableOpacity>
-        <FontAwesome name="bars" size={24} color="#ff9a00" />
+        <MaterialCommunityIcons name="rotate-3d-variant" size={24} color="#ff9a00" />
         </TouchableOpacity>
         </View>
         <FlatList
-          data={messages}
-          keyExtractor={(item, index) => index.toString()}
-          renderItem={({ item }) => (
-            <View style={{ padding: 10, backgroundColor: 'lightgray', marginVertical: 5 }}>
-              <Text>{item.text}</Text>
-            </View>
-          )}
-        />
+  data={prepareMessages(messages)}
+  keyExtractor={(item, index) => item.id || index.toString()}
+  renderItem={renderChatItem}/>
+
         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
         <TextInput
           style={{ flex: 1, height: 50, borderColor: 'gray', borderWidth: 1, margin: 5, borderRadius:25,paddingLeft:15 }}
