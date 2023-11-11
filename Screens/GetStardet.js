@@ -25,6 +25,7 @@ export default function GetStarted() {
           error => { console.log("Error creating message table", error); }
         );
       });
+      
     }
     const checkAuthToken = async () => {
       try {

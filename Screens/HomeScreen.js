@@ -23,7 +23,7 @@ const HomeScreen = ({ isDarkMode, setIsDarkMode, route}) => {
           navigation.navigate('Login', { message: 'Null token' });
           return;
         }
-  
+      
         const response = await fetch("https://copper-pattern-402806.ew.r.appspot.com/chatrooms", {
           method: "POST",
           headers: {
@@ -34,9 +34,9 @@ const HomeScreen = ({ isDarkMode, setIsDarkMode, route}) => {
             "what": "getChatroomsFromUser",
           }),
         });
-  
+        console.log(authToken)
         const serverChatrooms = await response.json();
-  
+        console.log('HERE2')
         if ('response' in serverChatrooms && serverChatrooms.response.includes("NOK")) {
           navigation.navigate('Login', { message: 'Expired session, please log in again' });
           return;

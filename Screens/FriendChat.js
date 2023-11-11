@@ -5,6 +5,7 @@ import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityI
 import { SocketProvider, useSocket } from '../hooks/socketInstance';
 import { useNavigation } from '@react-navigation/native';
 import * as SQLite from 'expo-sqlite';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const FriendChat = ({ route }) => {
   const [messages, setMessages] = useState([]);
@@ -23,19 +24,22 @@ const FriendChat = ({ route }) => {
     return uuid;
   }
   const prepareMessages = (messages) => {
+    // Sort messages by timestamp in ascending order
     const sortedMessages = messages.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
     const preparedMessages = [];
     let lastDate = null;
   
     sortedMessages.forEach((message) => {
-      const messageDate = new Date(message.timestamp).toDateString();
+      // Convert UTC timestamp to local date
+      const messageDate = new Date(message.timestamp).toLocaleDateString();
       if (messageDate !== lastDate) {
         preparedMessages.push({ type: 'dateSeparator', date: messageDate });
         lastDate = messageDate;
       }
+      // Adjust the message timestamp to the local timezone for display
+      message.timestamp = new Date(message.timestamp).toLocaleString();
       preparedMessages.push(message);
     });
-  
     return preparedMessages;
   };
   const saveMessage = (newMessage, local) => {
@@ -69,10 +73,9 @@ const FriendChat = ({ route }) => {
     try {
       db.transaction(tx => {
         tx.executeSql(
-          "SELECT * FROM message WHERE chatroom_id = ?;",
+          "SELECT * FROM message WHERE chatroom_id = ? ORDER BY timestamp ASC;",
           [chatroom_id],
           (_, { rows }) => {
-            console.log(rows._array)
             setMessages(rows._array);
           },
           error => { console.error("Error loading messages", error); }
@@ -85,9 +88,11 @@ const FriendChat = ({ route }) => {
   const sendMessage = async () => {
     if (newMessage.trim() !== '') {
       console.log('Sending message: ' + newMessage + ' to chatroom of id: ' + chatroom_id);
+      user_id=await AsyncStorage.getItem('user_id')
       socket.emit('message', {
         message: newMessage,
         room: chatroom_id,
+        sender_id:user_id,
       });
       mirroredMessage= await saveMessage(newMessage,1);
       setMessages((prevMessages) => {
