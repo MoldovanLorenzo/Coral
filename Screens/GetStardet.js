@@ -8,6 +8,7 @@ export default function GetStarted() {
   const navigation = useNavigation();
   const db = SQLite.openDatabase("CoralCache.db");
   useEffect(() => {
+    
     const initializeDatabase = async () => {
       console.log('ENTERED INITIALIZE DATABASE LOGIC')
       db.transaction(tx => {

@@ -2,7 +2,6 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import io from 'socket.io-client';
 import * as SQLite from 'expo-sqlite';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import useLeaveRoomOnBackground from './useLeaveRoomOnBackground';
 const SocketContext = createContext();
 
 export const useSocket = () => {
@@ -34,7 +33,7 @@ export const SocketProvider = ({ children }) => {
       const user_id=await AsyncStorage.getItem("user_id")
       newSocket.emit('fetch_pending_messages',{'sender_id':user_id})
     })
-    useLeaveRoomOnBackground(socket, room);
+    
     newSocket.on('pending_messages', async (data) => {
       console.log('received pending messages');
       try {
@@ -60,7 +59,10 @@ export const SocketProvider = ({ children }) => {
       } catch (error) {
         console.error("Database transaction error:", error);
       }
-    }); 
+    });
+    newSocket.on('no_pending_messages',()=>{
+      console.log('no pending messages for user');
+    }) 
     newSocket.emit('join_room',{"room":"main_room"})
     setSocket(newSocket);
      

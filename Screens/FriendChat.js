@@ -1,16 +1,25 @@
 import React, { useState, useEffect } from 'react';
-import { View, FlatList, Text, TouchableOpacity, TextInput, StyleSheet } from 'react-native';
+import { View, Image, FlatList, Text, TouchableOpacity, TextInput, StyleSheet } from 'react-native';
 import FontAwesome from 'react-native-vector-icons/FontAwesome';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons'
 import { SocketProvider, useSocket } from '../hooks/socketInstance';
 import { useNavigation } from '@react-navigation/native';
 import * as SQLite from 'expo-sqlite';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-
+import Flag from 'react-native-flags';
+const getFlagCode = (language) => {
+  const languageToCodeMapping = {
+    Spanish: 'ES',
+    English:'GB' 
+  };
+  return languageToCodeMapping[language] || 'EU'; 
+};
 const FriendChat = ({ route }) => {
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
-  const navigation = useNavigation();
+  const image=route.params.friend.photo;
+  const friend_language=route.params.friend.language;
+  let my_language= null;
   const socket = useSocket();
   const db = SQLite.openDatabase("CoralCache.db");
   const chatroom_id = route.params.friend.id;
@@ -24,20 +33,16 @@ const FriendChat = ({ route }) => {
     return uuid;
   }
   const prepareMessages = (messages) => {
-    // Sort messages by timestamp in ascending order
     const sortedMessages = messages.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
     const preparedMessages = [];
     let lastDate = null;
   
     sortedMessages.forEach((message) => {
-      // Convert UTC timestamp to local date
       const messageDate = new Date(message.timestamp).toLocaleDateString();
       if (messageDate !== lastDate) {
         preparedMessages.push({ type: 'dateSeparator', date: messageDate });
         lastDate = messageDate;
       }
-      // Adjust the message timestamp to the local timezone for display
-      message.timestamp = new Date(message.timestamp).toLocaleString();
       preparedMessages.push(message);
     });
     return preparedMessages;
@@ -71,6 +76,9 @@ const FriendChat = ({ route }) => {
   
   const loadMessages = async () => {
     try {
+      if(my_language==null){
+        my_language=await AsyncStorage.getItem('user_language')
+      }
       db.transaction(tx => {
         tx.executeSql(
           "SELECT * FROM message WHERE chatroom_id = ? ORDER BY timestamp ASC;",
@@ -88,6 +96,7 @@ const FriendChat = ({ route }) => {
   const sendMessage = async () => {
     if (newMessage.trim() !== '') {
       console.log('Sending message: ' + newMessage + ' to chatroom of id: ' + chatroom_id);
+      translateText(newMessage,'ES')
       user_id=await AsyncStorage.getItem('user_id')
       socket.emit('message', {
         message: newMessage,
@@ -95,48 +104,49 @@ const FriendChat = ({ route }) => {
         sender_id:user_id,
       });
       mirroredMessage= await saveMessage(newMessage,1);
-      setMessages((prevMessages) => {
+      await setMessages((prevMessages) => {
         const updatedMessages = [...prevMessages, mirroredMessage];
         return updatedMessages;
       });
-      console.log(messages)
+      
       setNewMessage('');
     }
   };
   
-  const GOOGLE_TRANSLATE_API_KEY = "-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQDXPwhS9mv0If+s\nIXPFis+Bnk9IhI9RlGhcEdDOsBXzXJhnhrQUCa1M0K7FDk0EOPZqIqEpmnU+EHGy\nG4ja/zzherBdyPUhHMHcxOw4Xtu6cyFolYPV6zRe4wqlEBNkBOFReWtdpn2Nza+N\ngJ8pbfzIcGb1npLRXQpLGalu6lNNCrxksWKVudl45GOy+IEAu3NHGmJulZQoy9RX\nNyFUX1qbvBT6LM/5vub0kX5Ap3FUX3C+WbiegTyMuflgkAzlPuybK7AEuK3gJkfe\nP+pnkyuXvtbe3k9Un9W6+XVaro+yfbXpau+2NU5bLeO2C4rpuCjsTC6s8CU7bdg6\nApebKoo5AgMBAAECggEACczs7BocQDlsEsJTKyNu30/9/CdM/0HqnoaRI1gRJ8uH\nhO81M9Rc96poysAj8ZVGYv7Ap8xImlLVWm62hIIqm3miniKQRrmwegTdXJO1HYAw\nfTqRjiPvdoKP8YQR3fP67mLA6Lqz7Mj4vVCl7pT7dYToqzZVKQM7fL/mXw58TH2j\nPKKA5ycFMpEHoY9En6bJ9DCGfm+48r4N3eAk3ipHER36BAo5OKKI6VIUVpb+CsQE\nFWo++UHeItGOWrFp0weFBqSNLUkuQ4VIcvjIMP+IpvmtSmWcMd7JMd1d/V8mF024\naqPliZCoDrvp1aemKPSSD/s0UZHO62pAK2ZOTdksAQKBgQD41SyLDCSNHjCIHUkc\nPYPKp7LIdMjIiYov1SprMLVTxSy/ICcw7UafpTGNErfv4Q3Uo3WMsf1iZhxfAJEW\nRY47Pg570aAhG/xDj0fPZGGpvy8nUOieyM784i1croCvap2ckiC1J1iAElowHVB1\nYVke1QWme6FgHZ/pTwuprdO6SQKBgQDdcjNhWNxNl0Bdw8Nz9FcXjVj1WKqIJoxm\nZsRpam3eDbg/B6Rl1p01IoHF4idjGetyHcen2TnH53/9hyLzf1FJ4tAB8Km/JrDh\n+GLmsuqshrBDc6FkaI6yW1KhBEZJa+x6FQhTe8zhjc4pgqQbqGT1HFB1QJFNP1WE\nvRyH/orQcQKBgAUCDVZzFR09+U4UAM+vsUJX47JDH3NhyUUzLhpgLZYVBtSF6iQC\n8oPuCDRFpywNxIB+FbSSNH5RfcqvsTvYhIdOtW3qhyWDca1OaeyToZ+P+Hv7FeN0\nOS4/wxf1byOYqrlm+3+J3i8dr3D+dgsWvXtwYB+8pz/O+NPyQlLU68j5AoGBANoU\npm7/EO5EvznYGbsu7ToflHUCnea5d9k86b8a9hoRjtpbz1YPdgCm/ACCCOH627kl\nhMNTFSk+XfiyxgPg5ZALE2hltvWtx9KyR8wEdUH03s9+p3l30tfpQcWarRGPfHJ6\nFhoJOKsEePy+UJmAS/RrrvzZ2n6lmbXAe8GeNtyxAoGAfR4aTTR/faQ6CQtqY35G\nZ6QCtHqyBiPFyUT1L8mYpZsqkcDV8EW51lXFJVJJtT5ObObGVYCQUJZ/q/IhfcdC\nYh4Kq2Kd8/3TENb9rAO/lU9og2Vy2a8FSdE93541kF+1i4rRCG1JRawPRWAtVMKo\nSdsnCQY+cWDRRxiykzlcB0k=\n-----END PRIVATE KEY-----\n";
-  const translateText = async (text, targetLanguage) => {
-      try {
-        console.log("now translating text: "+text)
-        const response = await fetch(`https://translation.googleapis.com/language/translate/v2`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Accept-Encoding': 'application/gzip',
-            'X-Goog-Api-Key': GOOGLE_TRANSLATE_API_KEY,
-          },
-          body: JSON.stringify({
-            q: text,
-            target: targetLanguage,
-          }),
-        });
-    
-        const responseJson = await response.json();
-    
-        if (responseJson.data && responseJson.data.translations) {
-          const translatedText = responseJson.data.translations[0].translatedText;
-          console.log('Translated text:', translatedText);
-          return translatedText;
-        } else {
-          console.log('Translation failed', responseJson);
-          return text; 
-        }
-      } catch (error) {
-        console.error('Error translating text:', error);
-        return text; 
-      }
+  
+  const translateText = async (toTranslate,targetLanguage) => {
+    const url = 'https://api-free.deepl.com/v2/translate';
+    const authKey = '5528c6fd-705c-5784-afd2-edba369cb1d9:fx'; // Replace with your actual DeepL Auth Key
+    const requestBody = {
+      text: [toTranslate],
+      target_lang: targetLanguage,
     };
+  
+    try {
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Authorization': `DeepL-Auth-Key ${authKey}`,
+          'User-Agent': 'YourApp/1.2.3', // Replace with your app's user agent
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(requestBody)
+      });
+  
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+  
+      const data = await response.json();
+      console.log(data);
+      console.log(data)
+    } catch (error) {
+      console.error('Error during translation:', error);
+    }
+  };
+  
     useEffect(() => {
+     
       socket.on('user_message', (data) => {
         translateText(data.message, 'es').then( async (translatedText) => {
           console.log('The translation is:', translatedText);
@@ -214,21 +224,36 @@ const FriendChat = ({ route }) => {
     }
     
   return (
-    <View style={{ flex: 1 }}>
+    <View style={{ flex: 1}}>
         <View style={{flexDirection: 'row', alignItems: 'center',justifyContent:'space-between',padding:30}}>
         <TouchableOpacity>
         <FontAwesome name="angle-left" size={30} color="#ff9a00" />
         </TouchableOpacity>
-        <Text>{route.params.friend.name}</Text>
+        <View style={{flexDirection:'row',alignItems:'center'}}>
+        <Text style={{ position:'relative',zIndex:2,fontWeight:500,marginRight:10}}>{route.params.friend.name}</Text>
+        <Image
+          source={image ? { uri: "data:image/jpeg;base64,"+image } : require('../assets/default_user.png')}style={{
+                  width: 60,
+                  height: 60,
+                  borderRadius: 30,
+                  borderColor:'#ff9a00',
+                  borderWidth:2,
+                  zIndex:1
+                  }}/>
+        </View>
         <TouchableOpacity>
+        <View style={{flexDirection:'column',alignItems:'center',justifyContent:'space-around'}}>
+        <Flag code={getFlagCode(friend_language)} size={16} style={{marginBottom:-7,marginRight:15,height:20,width:20}}/>
         <MaterialCommunityIcons name="rotate-3d-variant" size={24} color="#ff9a00" />
+        <Flag code={getFlagCode(my_language)} size={16} style={{marginTop:-7,marginLeft:15,height:20,width:20}}/>  
+        </View>  
         </TouchableOpacity>
         </View>
         <FlatList
   data={prepareMessages(messages)}
   keyExtractor={(item, index) => item.id || index.toString()}
   renderItem={renderChatItem}/>
-
+         
         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
         <TextInput
           style={{ flex: 1, height: 50, borderColor: 'gray', borderWidth: 1, margin: 5, borderRadius:25,paddingLeft:15 }}

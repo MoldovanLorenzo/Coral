@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, FlatList, TouchableOpacity, Image} from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { FontAwesome } from '@expo/vector-icons';
+import { AppState } from 'react-native';
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import useGlobalBackHandler from '../hooks/useGlobalBackHandler';
 import Flag from 'react-native-flags';
@@ -90,8 +91,6 @@ const HomeScreen = ({ isDarkMode, setIsDarkMode, route}) => {
               error => console.log("Error selecting updated chatrooms", error)
             );
           })
-        
-
       } catch (error) {
         console.error("Eroare de rețea:", error);
         navigation.navigate('Login', { message: 'Network error' });
@@ -107,6 +106,23 @@ const HomeScreen = ({ isDarkMode, setIsDarkMode, route}) => {
     useGlobalBackHandler();
     
     useEffect(() => {
+      const handleAppStateChange = (nextAppState) => {
+        if (nextAppState === 'active') {
+          console.log('App has come to the foreground!');
+          if (!socket.connected) {
+            socket.connect();
+          }
+          navigation.navigate('Home',{fetchFlag:true});
+        }
+        if (nextAppState === 'background' || nextAppState === 'inactive') {
+          console.log('App has gone to the background.');
+          if (socket.connected) {
+            socket.disconnect();
+          }
+        }
+      };
+  
+      AppState.addEventListener('change', handleAppStateChange);
       if (isFocused) {
         const fetchFlag = route.params?.fetchFlag ?? false;
         if (fetchFlag) {
@@ -130,19 +146,15 @@ const HomeScreen = ({ isDarkMode, setIsDarkMode, route}) => {
 
   return (
       <View style={{ flex: 1, backgroundColor: isDarkMode ? '#191919' : 'white' }}>
-        <View style={{ flexDirection: 'row' }}>
-          <TouchableOpacity onPress={handleFriendsFinderSelection} style={{ alignSelf: 'center', position: 'relative', left: 20 }}>
+        <View style={{ flexDirection: 'row',alignItems:'center',justifyContent:'space-between',paddingTop:25,paddingBottom:25}}>
+          <TouchableOpacity onPress={handleFriendsFinderSelection} style={{paddingLeft:15}}>
             <FontAwesome name="user-plus" size={25} color="#ff9a00" />
           </TouchableOpacity>
-
-          <TouchableOpacity
-            onPress={handleSettingsSelection}
-            style={{ position: 'relative', left: 250, top: 57, margin: 0 }}
-          >
+          <Image source={require('../assets/Coral.png')} resizeMode="contain" style={{width:135,height:75}}/>
+          <TouchableOpacity style={{paddingRight:15}}
+            onPress={handleSettingsSelection}>
             <FontAwesome name="gear" size={30} color="#ff9a00" />
           </TouchableOpacity>
-
-          <Text style={{ alignSelf: 'center', margin: 50, marginLeft: 65, fontSize: 30, fontWeight: 'bold',color: isDarkMode ? 'gray' : 'black' }}>Chats</Text>
         </View>
 
         <View style={{ flexDirection: 'row', width: 250, alignSelf: 'center', borderRadius: 23, backgroundColor: 'lightgray' }}>
