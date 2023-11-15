@@ -218,6 +218,11 @@ const FriendChat = ({ route }) => {
         socket.off('ack_message');
       };
     }, [socket]);
+    useEffect(() => {
+      if (flatList.current && messages.length > 0) {
+        flatList.current.scrollToIndex({ index: messages.length - 1, animated: true, viewOffset: 0, viewPosition: 1 });
+      }
+    }, [messages]);
     const renderChatItem = ({ item }) => {
       const styles = StyleSheet.create({
         messageContainer: {
@@ -300,27 +305,27 @@ const FriendChat = ({ route }) => {
         </View>  
         </TouchableOpacity>
         </View>
-        <FlatList 
-  data={prepareMessages(messages)}
-  ref={flatList}
-  keyExtractor={(item, index) => item.id || index.toString()}
-  renderItem={renderChatItem}/>
-         
-        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+        <FlatList
+        data={prepareMessages(messages)}
+        ref={flatList}
+        keyExtractor={(item, index) => item.id || index.toString()}
+        renderItem={renderChatItem}
+      />
+      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
         <TextInput
-          style={{ flex: 1, height: 50, borderColor: 'gray', borderWidth: 1, margin: 5, borderRadius:25,paddingLeft:15 }}
+          style={{ flex: 1, height: 50, borderColor: 'gray', borderWidth: 1, margin: 5, borderRadius: 25, paddingLeft: 15 }}
           onChangeText={(text) => setNewMessage(text)}
           value={newMessage}
           placeholder="Introduceți un mesaj..."
-          />
-          <TouchableOpacity
-            style={{ backgroundColor: '#ff9a00', padding: 10, margin: 5, borderRadius: 25}}
-            onPress={sendMessage}
-          >
-            <FontAwesome name="paper-plane" size={24} color="white" />
-          </TouchableOpacity>
-        </View>
+        />
+        <TouchableOpacity
+          style={{ backgroundColor: '#ff9a00', padding: 10, margin: 5, borderRadius: 25 }}
+          onPress={sendMessage}
+        >
+          <FontAwesome name="paper-plane" size={24} color="white" />
+        </TouchableOpacity>
       </View>
+    </View>
   );
 };
 
