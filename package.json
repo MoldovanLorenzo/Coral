@@ -35,6 +35,8 @@
     "react-native-modal-dropdown": "^1.0.2",
     "react-native-permissions": "^3.10.1",
     "react-native-picker-select": "^8.1.0",
+    "react-native-recaptcha-that-works": "^2.0.0",
+    "react-native-webview": "^13.6.2",
     "react-navigation-header-buttons": "^11.0.1",
     "realm": "^12.3.0",
     "socket.io-client": "^4.7.2",

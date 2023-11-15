@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect,useRef } from 'react';
 import { View, Text, FlatList, TouchableOpacity, Image} from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { FontAwesome } from '@expo/vector-icons';
@@ -6,6 +6,7 @@ import { AppState } from 'react-native';
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import useGlobalBackHandler from '../hooks/useGlobalBackHandler';
 import Flag from 'react-native-flags';
+import { debounce } from 'lodash';
 import { useSocket, SocketProvider } from '../hooks/socketInstance';
 import * as SQLite from 'expo-sqlite';
 import { useIsFocused } from '@react-navigation/native';
@@ -13,18 +14,77 @@ const HomeScreen = ({ isDarkMode, setIsDarkMode, route}) => {
     const navigation = useNavigation();
     const db = SQLite.openDatabase("CoralCache.db");
     const [activeTab, setActiveTab] = useState('friends');
+    const [my_language, setUserLanguage] = useState('null');
     let authToken = null;
     const socket=useSocket()
     const [friendsData, setFriendsData] = useState([]);
     const isFocused = useIsFocused();
+    const friendsDataRef = useRef([]);
+    
+    function generateUUID() {
+      let d = new Date().getTime();
+      const uuid = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+        const r = (d + Math.random() * 16) % 16 | 0;
+        d = Math.floor(d / 16);
+        return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
+      });
+      return uuid;
+    }
+    const translateText = async (toTranslate,targetLanguage) => {
+      const url = 'https://api-free.deepl.com/v2/translate';
+      const authKey = '5528c6fd-705c-5784-afd2-edba369cb1d9:fx'; // Replace with your actual DeepL Auth Key
+      const requestBody = {
+        text: [toTranslate],
+        target_lang: targetLanguage,
+      };
+    
+      try {
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: {
+            'Authorization': `DeepL-Auth-Key ${authKey}`,
+            'User-Agent': 'YourApp/1.2.3', // Replace with your app's user agent
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(requestBody)
+        });
+    
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+    
+        const data = await response.json();
+        console.log(data);
+        console.log(data)
+      } catch (error) {
+        console.error('Error during translation:', error);
+      }
+    };
+    const handleAppStateChange = debounce((nextAppState) => {
+      if (nextAppState === 'active') {
+        console.log('App has come to the foreground!');
+        if (!socket.connected) {
+          socket.connect();
+        }
+        navigation.navigate('Home',{fetchFlag:true});
+      }
+      if (nextAppState === 'background' || nextAppState === 'inactive') {
+        console.log('App has gone to the background.');
+        if (socket.connected) {
+          socket.disconnect();
+        }
+      }
+    },50)
     const fetchData = async () => {
       try {
         const authToken = await AsyncStorage.getItem('auth_token');
+        const user_ln=await AsyncStorage.getItem('user_language')
+        setUserLanguage(user_ln)
         if (!authToken) {
           navigation.navigate('Login', { message: 'Null token' });
           return;
         }
-      
+        const user_id=await AsyncStorage.getItem('user_id')
         const response = await fetch("https://copper-pattern-402806.ew.r.appspot.com/chatrooms", {
           method: "POST",
           headers: {
@@ -37,7 +97,6 @@ const HomeScreen = ({ isDarkMode, setIsDarkMode, route}) => {
         });
         console.log(authToken)
         const serverChatrooms = await response.json();
-        console.log('HERE2')
         if ('response' in serverChatrooms && serverChatrooms.response.includes("NOK")) {
           navigation.navigate('Login', { message: 'Expired session, please log in again' });
           return;
@@ -71,26 +130,33 @@ const HomeScreen = ({ isDarkMode, setIsDarkMode, route}) => {
             error => console.log("Error selecting chatrooms", error)
           );
         })
-        
-        
-        await db.transaction(tx=>{
-            tx.executeSql(
-              `SELECT * FROM chatroom;`,
-              [],
-              (_, { rows }) => {
-                const updatedChatrooms = rows._array;
-                setFriendsData(updatedChatrooms);
-    
-                const existingChatroomIds = new Set(friendsData.map(chatroom => chatroom.id));
-                updatedChatrooms.forEach(chatroom => {
+        const updateChatrooms = () => {
+          return new Promise((resolve, reject) => {
+            db.transaction(tx => {
+              tx.executeSql(
+                `SELECT * FROM chatroom;`,
+                [],
+                (_, { rows }) => {
+                  const updatedChatrooms = rows._array;
+                  setFriendsData(updatedChatrooms);
+                  friendsDataRef.current = updatedChatrooms;
+                  const existingChatroomIds = new Set(friendsData.map(chatroom => chatroom.id));
+                  updatedChatrooms.forEach(chatroom => {
                   if (!existingChatroomIds.has(chatroom.id)) {
                     socket.emit('join_room', { "room": chatroom.id });
                   }
                 });
-              },
-              error => console.log("Error selecting updated chatrooms", error)
-            );
-          })
+                  resolve(updatedChatrooms);
+                },
+                (tx, error) => {
+                  console.log("Error selecting updated chatrooms", error);
+                  reject(error);
+                }
+              );
+            });
+          });
+        };
+        updateChatrooms().then(()=>{socket.emit('fetch_pending_messages', {'sender_id': user_id});})
       } catch (error) {
         console.error("Eroare de rețea:", error);
         navigation.navigate('Login', { message: 'Network error' });
@@ -98,37 +164,86 @@ const HomeScreen = ({ isDarkMode, setIsDarkMode, route}) => {
     };
     const getFlagCode = (language) => {
       const languageToCodeMapping = {
-        Spanish: 'ES',
-        English:'GB' 
+        "Spanish": 'ES',
+        "English":'GB',
+        "French":'FR' 
       };
+      console.log(language)
       return languageToCodeMapping[language] || 'EU'; 
     };
-    useGlobalBackHandler();
-    
+    const handleReceivedMessages = async (receivedMessages) => {
+      console.log('at this timestep, friends data is:')
+      console.log(friendsDataRef.current)
+      const updatedFriendsData = [...friendsDataRef.current];
+      console.log(updatedFriendsData)
+      console.log(receivedMessages)
+
+      for (const message of receivedMessages) {
+        const chatroomIndex = updatedFriendsData.findIndex(room => room.id == message.room);
+        if (chatroomIndex !== -1) {
+          updatedFriendsData[chatroomIndex].latest = message;
+          
+        }
+      }
+      console.log('friends data')
+      setFriendsData(updatedFriendsData);
+      console.log(friendsData)
+      console.log('just set friendsdata')
+    };
     useEffect(() => {
-      const handleAppStateChange = (nextAppState) => {
-        if (nextAppState === 'active') {
-          console.log('App has come to the foreground!');
-          if (!socket.connected) {
-            socket.connect();
-          }
-          navigation.navigate('Home',{fetchFlag:true});
+      
+
+      socket.on('pending_messages', async (data) => {
+        console.log('received pending messages');
+        new_data=data
+        new_data.forEach(async(message)=>{
+           console.log(my_language)
+           translateText(message.message,getFlagCode(my_language)).then((translation)=>{
+             message.message=translation.translations[0].text;
+           })
+        })
+        await handleReceivedMessages(new_data);
+        try {
+          await db.transaction((tx) => {
+            new_data.forEach(async(message) => {
+              await new Promise((resolve, reject) => {
+                tx.executeSql(
+                  "INSERT INTO message (id, content, local_sender, chatroom_id, timestamp) VALUES (?, ?, ?, ?, ?);",
+                  [generateUUID(), message.message, false, message.room, message.timestamp],
+                  () => {
+                    console.log("Message saved");
+                    console.log(message)
+                    resolve();
+                  },
+                  (t, error) => {
+                    console.error("Error saving message", error);
+                    reject(error);
+                  }
+                );
+              });
+            });
+          });
+        } catch (error) {
+          console.error("Database transaction error:", error);
         }
-        if (nextAppState === 'background' || nextAppState === 'inactive') {
-          console.log('App has gone to the background.');
-          if (socket.connected) {
-            socket.disconnect();
-          }
-        }
-      };
-  
+      });
+      socket.on('no_pending_messages',()=>{
+        console.log('no pending messages for user');
+      }) 
+      
       AppState.addEventListener('change', handleAppStateChange);
+      return () => {
+        socket.off('pending_messages');
+        socket.off('no_pending_messages');
+        
+      };
+    }, []);
+    useEffect(() => {
       if (isFocused) {
         const fetchFlag = route.params?.fetchFlag ?? false;
         if (fetchFlag) {
             fetchData();
         } else {
-            
         }
     }
    }, [isFocused, route.params]);
@@ -225,7 +340,9 @@ const HomeScreen = ({ isDarkMode, setIsDarkMode, route}) => {
 
                   <View style={{ flex: 1 }}>
                     <Text style={{ fontWeight: 'bold', marginBottom: 5,color: isDarkMode ? 'gray' : 'black' }}>{item.name}</Text>
-                    <Text style={{color: isDarkMode ? 'gray' : 'black'}}>Ultimul mesaj trimis</Text>
+                    <Text style={{ fontWeight: item.latest? 'bold' : 'normal', color: isDarkMode ? 'gray' : 'black' }}>
+                    {item.latest?.message || 'No new messages'}
+                   </Text>
                   </View>
                 </View>
               </TouchableOpacity>
