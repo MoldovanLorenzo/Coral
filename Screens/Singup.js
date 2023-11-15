@@ -52,6 +52,7 @@ export default function Singup() {
           console.log(responseData)
         }else{
           setError("Unknown error when signing up, please try again");
+          console.log(responseData)
         }
 
       })

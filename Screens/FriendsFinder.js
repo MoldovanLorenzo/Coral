@@ -3,7 +3,7 @@ import { View, Text, TouchableOpacity, TextInput, StyleSheet, FlatList, Image } 
 import { FontAwesome } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import AsyncStorage from "@react-native-async-storage/async-storage"; 
-
+import Flag from 'react-native-flags';
 const FriendsFinder = () => {
   const navigation = useNavigation();
   const [searchText, setSearchText] = useState('');
@@ -14,17 +14,24 @@ const FriendsFinder = () => {
   const handleFriendsRequestScreen=()=>{
     navigation.navigate('Request');
   }
-
+  const checkAuthToken = async () => {
+    try {
+      authToken = await AsyncStorage.getItem('auth_token');
+      console.log(authToken);
+    } catch (error) {
+      console.error('Eroare la retragerea token-ului:', error);
+    }
+  };
+  const getFlagCode = (language) => {
+    const languageToCodeMapping = {
+      Spanish: 'ES',
+      English:'GB' 
+    };
+    return languageToCodeMapping[language] || 'EU'; 
+  };
   const handleSearch = async () => {
     try {
-      const checkAuthToken = async () => {
-        try {
-          authToken = await AsyncStorage.getItem('auth_token');
-          console.log(authToken);
-        } catch (error) {
-          console.error('Eroare la retragerea token-ului:', error);
-        }
-      };
+      
       checkAuthToken().then(() =>
         fetch("https://copper-pattern-402806.ew.r.appspot.com/users", {
           method: "POST",
@@ -39,7 +46,7 @@ const FriendsFinder = () => {
         })
           .then((response) => response.json())
           .then(async (responseData) => {
-            console.log("Response from server:", responseData);
+            console.log(responseData)
             setSearchResults(responseData);
           })
           .catch((error) => {
@@ -62,7 +69,7 @@ const FriendsFinder = () => {
           <Text style={styles.headerText}>Add Friends</Text>
         </View>
         <TouchableOpacity onPress={handleFriendsRequestScreen}>
-        <FontAwesome name="user" size={24} color="#ff9a00" />
+        <FontAwesome name="envelope" size={24} color="#ff9a00" />
         </TouchableOpacity>
       </View>
       <View style={styles.inputContainer}>
@@ -77,21 +84,96 @@ const FriendsFinder = () => {
         </TouchableOpacity>
       </View>
       <FlatList
-        data={searchResults}
-        renderItem={({ item }) => (
-          <View style={styles.friendItem}>
-            <Image source={{ uri: item.avatar }} style={styles.avatar} />
-            <View>
-              <Text style={styles.friendName}>{item.username}</Text>
-              <Text style={{color:'lightgray',fontSize:10}}>{item.id}</Text>
+  data={searchResults}
+  renderItem={({ item }) => {
+    const imageSource = item.user_image
+      ? { uri: `data:image/jpeg;base64,${item.user_image}` }
+      : require('../assets/default_user.png');
+
+    let button;
+    const flagCode=getFlagCode(item.preffered_language)
+    switch (item.status) {
+      case "none":
+        button = (
+          <TouchableOpacity style={{ justifyContent: 'flex-end' }} onPress={() => {checkAuthToken().then(() =>
+            fetch("https://copper-pattern-402806.ew.r.appspot.com/users", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                "Authorization": authToken,
+              },
+              body: JSON.stringify({
+                "what": "sendFriendRequest",
+                "recipient_id": item.id
+              }),
+            })
+              .then((response) => response.json())
+              .then(async (responseData) => {
+                console.log(responseData)
+                if (responseData.response=='OK') {
+                  const updatedResults = searchResults.map((sr) => {
+                    if (sr.id === item.id) {
+                      return { ...sr, status: 'sent' }; 
+                    }
+                    return sr;
+                  });
+                  setSearchResults(updatedResults);
+                }
+              })
+              .catch((error) => {
+                console.error("Eroare de rețea:", error);
+              })
+          );}}>
+            <FontAwesome name="user-plus" size={20} color="#ff9a00" />
+          </TouchableOpacity>
+        );
+        break;
+      case "sent":
+        button = (
+          <TouchableOpacity style={{ justifyContent: 'flex-end' }} onPress={() => {}}>
+            <FontAwesome name="ellipsis-h" size={20} color='lightgray' />
+          </TouchableOpacity>
+        );
+        break;
+      case "incoming":
+        button = (
+          <TouchableOpacity style={{ justifyContent: 'flex-end' }} onPress={handleFriendsRequestScreen}>
+            <FontAwesome name="envelope" size={20} color="#ff9a00" />
+          </TouchableOpacity>
+        );
+        break;
+      case "friends":
+        button = (
+          <TouchableOpacity style={{ justifyContent: 'flex-end' }} onPress={()=>{
+            navigation.navigate('Home')
+          }}>
+            <FontAwesome name="group" size={20} color="lightgray" />
+          </TouchableOpacity>
+        );
+      break;
+      default:
+        button = null; 
+    }
+
+    return (
+      <View style={styles.friendItem}>
+        <View>
+        <Image source={imageSource} style={styles.avatar} />
+        {item.preffered_language === "English" && (
+            <View style={styles.flagContainer}>
+              <Flag code={flagCode}  size={16} />
             </View>
-            <TouchableOpacity style={{justifyContent:'flex-end'}}>
-            <FontAwesome name="plus" size={20} color="#ff9a00" />
-           </TouchableOpacity>
-          </View>
-        )}
-        keyExtractor={(item) => item.id.toString()}
-      />
+          )}</View>
+        <View>
+          <Text style={styles.friendName}>{item.username}</Text>
+          <Text style={{ color: 'lightgray', fontSize: 10 }}>{item.id}</Text>
+        </View>
+        {button}
+      </View>
+    );
+  }}
+  keyExtractor={(item) => item.id.toString()}
+/>
     </View>
   );
 };
@@ -107,6 +189,11 @@ const styles = StyleSheet.create({
     padding: 30,
     alignItems: 'center',
     backgroundColor: 'white',
+  },
+  flagContainer: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
   },
   headerTextContainer: {
     flex: 1,

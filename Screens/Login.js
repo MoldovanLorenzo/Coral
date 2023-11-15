@@ -3,7 +3,6 @@ import { useRoute } from '@react-navigation/native';
 import { View, Text, TextInput, TouchableOpacity } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useNavigation } from "@react-navigation/native";
-
 export default function Login() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -32,7 +31,16 @@ export default function Login() {
 
         if (responseData.response === "OK" && responseData.auth_token) {
           console.log(responseData.auth_token);
-          AsyncStorage.setItem("auth_token", responseData.auth_token).then(()=>{navigation.navigate('Home');})
+          setInfo=async () =>{
+            await AsyncStorage.setItem("auth_token", responseData.auth_token)
+            await AsyncStorage.setItem("user_username",responseData.username)
+            await AsyncStorage.setItem("user_language",responseData.preffered_language)
+            await AsyncStorage.setItem("user_id",responseData.id)
+            if(responseData.user_image!=null){
+            await AsyncStorage.setItem("user_photo",responseData.user_image)
+            }
+          }
+          setInfo().then(()=>{navigation.navigate('Home',{fetchFlag:true});})
         } else {
           setError("Eroare la autentificare. Verificați datele introduse.");
         }
