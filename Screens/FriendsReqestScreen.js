@@ -9,10 +9,37 @@ export default function FriendsRequestScreen({ isDarkMode, setIsDarkMode }) {
   const [pendingRequests, setPendingRequests] = useState([]);
   const getFlagCode = (language) => {
     const languageToCodeMapping = {
-      Spanish: 'ES',
-      English:'GB' 
+      'Spanish': 'ES',
+      'English': 'GB',
+      'Bulgarian': 'BG',
+      'Chinese': 'CN',
+      'Czech': 'CZ',
+      'Danish': 'DK',
+      'Dutch': 'NL',
+      'Estonian': 'EE',
+      'Finnish': 'FI',
+      'French': 'FR',
+      'German': 'DE',
+      'Greek': 'GR',
+      'Hungarian': 'HU',
+      'Indonesian': 'ID',
+      'Italian': 'IT',
+      'Japanese': 'JP',
+      'Korean': 'KR',
+      'Latvian': 'LV',
+      'Lithuanian': 'LT',
+      'Norwegian': 'NO',
+      'Polish': 'PL',
+      'Portuguese': 'PT',
+      'Romanian': 'RO',
+      'Russian': 'RU',
+      'Slovak': 'SK',
+      'Slovenian': 'SI',
+      'Swedish': 'SE',
+      'Turkish': 'TR',
+      'Ukrainian': 'UA',
     };
-    return languageToCodeMapping[language] || 'EU'; 
+    return languageToCodeMapping[language] || 'EU';
   };
   
   useEffect(() => {

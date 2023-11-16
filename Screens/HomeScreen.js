@@ -5,16 +5,17 @@ import { FontAwesome } from '@expo/vector-icons';
 import { AppState } from 'react-native';
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import useGlobalBackHandler from '../hooks/useGlobalBackHandler';
+import LoadingScreen from './LoadingScreen'
 import Flag from 'react-native-flags';
 import { debounce } from 'lodash';
 import { useSocket, SocketProvider } from '../hooks/socketInstance';
 import * as SQLite from 'expo-sqlite';
 import { useIsFocused } from '@react-navigation/native';
 const HomeScreen = ({ isDarkMode, setIsDarkMode, route}) => {
+    const [loading, setLoading] = useState(false);
     const navigation = useNavigation();
     const db = SQLite.openDatabase("CoralCache.db");
     const [activeTab, setActiveTab] = useState('friends');
-    const [my_language, setUserLanguage] = useState('null');
     let authToken = null;
     const socket=useSocket()
     const [friendsData, setFriendsData] = useState([]);
@@ -49,13 +50,8 @@ const HomeScreen = ({ isDarkMode, setIsDarkMode, route}) => {
           body: JSON.stringify(requestBody)
         });
     
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-    
         const data = await response.json();
-        console.log(data);
-        console.log(data)
+        return data
       } catch (error) {
         console.error('Error during translation:', error);
       }
@@ -77,9 +73,9 @@ const HomeScreen = ({ isDarkMode, setIsDarkMode, route}) => {
     },50)
     const fetchData = async () => {
       try {
+        setLoading(true);
+        console.log('just set loading')
         const authToken = await AsyncStorage.getItem('auth_token');
-        const user_ln=await AsyncStorage.getItem('user_language')
-        setUserLanguage(user_ln)
         if (!authToken) {
           navigation.navigate('Login', { message: 'Null token' });
           return;
@@ -129,6 +125,7 @@ const HomeScreen = ({ isDarkMode, setIsDarkMode, route}) => {
             },
             error => console.log("Error selecting chatrooms", error)
           );
+          
         })
         const updateChatrooms = () => {
           return new Promise((resolve, reject) => {
@@ -156,7 +153,12 @@ const HomeScreen = ({ isDarkMode, setIsDarkMode, route}) => {
             });
           });
         };
-        updateChatrooms().then(()=>{socket.emit('fetch_pending_messages', {'sender_id': user_id});})
+        updateChatrooms().then(()=>{
+          socket.emit('fetch_pending_messages', {'sender_id': user_id});
+          setTimeout(() => {
+            setLoading(false); 
+          }, 2000)
+        });
       } catch (error) {
         console.error("Eroare de rețea:", error);
         navigation.navigate('Login', { message: 'Network error' });
@@ -164,12 +166,37 @@ const HomeScreen = ({ isDarkMode, setIsDarkMode, route}) => {
     };
     const getFlagCode = (language) => {
       const languageToCodeMapping = {
-        "Spanish": 'ES',
-        "English":'GB',
-        "French":'FR' 
+        'Spanish': 'ES',
+        'English': 'GB',
+        'Bulgarian': 'BG',
+        'Chinese': 'CN',
+        'Czech': 'CZ',
+        'Danish': 'DK',
+        'Dutch': 'NL',
+        'Estonian': 'EE',
+        'Finnish': 'FI',
+        'French': 'FR',
+        'German': 'DE',
+        'Greek': 'GR',
+        'Hungarian': 'HU',
+        'Indonesian': 'ID',
+        'Italian': 'IT',
+        'Japanese': 'JP',
+        'Korean': 'KR',
+        'Latvian': 'LV',
+        'Lithuanian': 'LT',
+        'Norwegian': 'NO',
+        'Polish': 'PL',
+        'Portuguese': 'PT',
+        'Romanian': 'RO',
+        'Russian': 'RU',
+        'Slovak': 'SK',
+        'Slovenian': 'SI',
+        'Swedish': 'SE',
+        'Turkish': 'TR',
+        'Ukrainian': 'UA',
       };
-      console.log(language)
-      return languageToCodeMapping[language] || 'EU'; 
+      return languageToCodeMapping[language] || 'EU';
     };
     const handleReceivedMessages = async (receivedMessages) => {
       console.log('at this timestep, friends data is:')
@@ -195,36 +222,46 @@ const HomeScreen = ({ isDarkMode, setIsDarkMode, route}) => {
 
       socket.on('pending_messages', async (data) => {
         console.log('received pending messages');
-        new_data=data
-        new_data.forEach(async(message)=>{
-           console.log(my_language)
-           translateText(message.message,getFlagCode(my_language)).then((translation)=>{
-             message.message=translation.translations[0].text;
-           })
-        })
-        await handleReceivedMessages(new_data);
         try {
-          await db.transaction((tx) => {
-            new_data.forEach(async(message) => {
-              await new Promise((resolve, reject) => {
-                tx.executeSql(
-                  "INSERT INTO message (id, content, local_sender, chatroom_id, timestamp) VALUES (?, ?, ?, ?, ?);",
-                  [generateUUID(), message.message, false, message.room, message.timestamp],
-                  () => {
-                    console.log("Message saved");
-                    console.log(message)
-                    resolve();
-                  },
-                  (t, error) => {
-                    console.error("Error saving message", error);
-                    reject(error);
-                  }
-                );
-              });
-            });
+          var language = await AsyncStorage.getItem('user_language');
+          var target = getFlagCode(language);
+      
+          const translatedMessages = await Promise.all(data.map(async (message) => {
+            const translation = await translateText(message.message, target);
+            return translation.translations[0].text;
+          }));
+          const new_data = data.map((message, index) => ({
+            ...message,
+            message: translatedMessages[index]
+          }));
+      
+          await handleReceivedMessages(new_data);
+      
+          await db.transaction(async (tx) => {
+            await Promise.all(new_data.map(async (message) => {
+              try {
+                await new Promise((resolve, reject) => {
+                  tx.executeSql(
+                    "INSERT INTO message (id, content, local_sender, chatroom_id, timestamp) VALUES (?, ?, ?, ?, ?);",
+                    [generateUUID(), message.message, false, message.room, message.timestamp],
+                    () => {
+                      console.log("Message saved");
+                      console.log(message);
+                      resolve();
+                    },
+                    (t, error) => {
+                      console.error("Error saving message", error);
+                      reject(error);
+                    }
+                  );
+                });
+              } catch (error) {
+                console.error("Error in database transaction:", error);
+              }
+            }));
           });
         } catch (error) {
-          console.error("Database transaction error:", error);
+          console.error("Error:", error);
         }
       });
       socket.on('no_pending_messages',()=>{
@@ -242,6 +279,7 @@ const HomeScreen = ({ isDarkMode, setIsDarkMode, route}) => {
       if (isFocused) {
         const fetchFlag = route.params?.fetchFlag ?? false;
         if (fetchFlag) {
+          console.log('fetching....')
             fetchData();
         } else {
         }
@@ -260,7 +298,9 @@ const HomeScreen = ({ isDarkMode, setIsDarkMode, route}) => {
     };
 
   return (
+      
       <View style={{ flex: 1, backgroundColor: isDarkMode ? '#191919' : 'white' }}>
+        {loading && <LoadingScreen />}
         <View style={{ flexDirection: 'row',alignItems:'center',justifyContent:'space-between',paddingTop:25,paddingBottom:25}}>
           <TouchableOpacity onPress={handleFriendsFinderSelection} style={{paddingLeft:15}}>
             <FontAwesome name="user-plus" size={25} color="#ff9a00" />
