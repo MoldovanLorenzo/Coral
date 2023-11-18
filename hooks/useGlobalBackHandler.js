@@ -8,11 +8,7 @@ const useGlobalBackHandler = () => {
     );
 
     const onBackPress = () => {
-        if (['None'].includes(currentRouteName)) {
-            console.log(currentRouteName);
-            return true;  
-        }
-        return false;
+        return true;
     };
 
     useEffect(() => {

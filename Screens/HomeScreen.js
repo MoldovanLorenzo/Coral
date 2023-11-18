@@ -21,7 +21,7 @@ const HomeScreen = ({ isDarkMode, setIsDarkMode, route}) => {
     const [friendsData, setFriendsData] = useState([]);
     const isFocused = useIsFocused();
     const friendsDataRef = useRef([]);
-    
+    useGlobalBackHandler();
     function generateUUID() {
       let d = new Date().getTime();
       const uuid = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {

@@ -7,6 +7,7 @@ import { useNavigation } from '@react-navigation/native';
 import * as SQLite from 'expo-sqlite';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Flag from 'react-native-flags';
+import useGlobalBackHandler from '../hooks/useGlobalBackHandler';
 const getFlagCode = (language) => {
   const languageToCodeMapping = {
     'Spanish': 'ES',
@@ -51,6 +52,8 @@ const FriendChat = ({ route }) => {
   const socket = useSocket();
   const db = SQLite.openDatabase("CoralCache.db");
   const chatroom_id = route.params.friend.id;
+  const navigator=useNavigation();
+  useGlobalBackHandler();
   function generateUUID() {
     let d = new Date().getTime();
     const uuid = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
@@ -302,7 +305,9 @@ const FriendChat = ({ route }) => {
   return (
     <View style={{ flex: 1}}>
         <View style={{flexDirection: 'row', alignItems: 'center',justifyContent:'space-between',padding:30}}>
-        <TouchableOpacity>
+        <TouchableOpacity onPress={()=>{
+          navigator.navigate('Home')
+        }}>
         <FontAwesome name="angle-left" size={30} color="#ff9a00" />
         </TouchableOpacity>
         <View style={{flexDirection:'row',alignItems:'center'}}>

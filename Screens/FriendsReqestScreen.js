@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { View, Text, TouchableOpacity, StyleSheet, FlatList, Image } from 'react-native';
 import { FontAwesome } from '@expo/vector-icons';
 import AsyncStorage from "@react-native-async-storage/async-storage"; 
-import Flag from 'react-native-flags'; // Ensure this is the correct import based on your flags library
+import Flag from 'react-native-flags'; 
 import { useNavigation } from '@react-navigation/native';
 export default function FriendsRequestScreen({ isDarkMode, setIsDarkMode }) {
   const navigation = useNavigation();
@@ -148,7 +148,7 @@ export default function FriendsRequestScreen({ isDarkMode, setIsDarkMode }) {
     <View style={[styles.container, { backgroundColor: isDarkMode ? 'black' : 'white' }]}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
+        <TouchableOpacity onPress={() => navigation.navigate('FriendsFinder')}>
           <FontAwesome name="angle-left" size={30} color="#ff9a00" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Friends Requests</Text>
