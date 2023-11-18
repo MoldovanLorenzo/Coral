@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { View, Text, TextInput, TouchableOpacity } from 'react-native';
 import ModalDropdown from 'react-native-modal-dropdown';
 import { useNavigation } from '@react-navigation/native';
+import Flag from 'react-native-flags';
 export default function Singup() {
   const navigation = useNavigation();
   const [email, setEmail]=useState("")
@@ -9,6 +10,37 @@ export default function Singup() {
   const [password, setPassword] = useState("");
   const [selectedCountry, setSelectedCountry] = useState("");
   const [error, setError] = useState('');
+  const [countries,setCountries] = useState([
+    { label: 'Spanish', code: 'ES' },
+    { label: 'English', code: 'GB' },
+    { label: 'Bulgarian', code: 'BG' },
+    { label: 'Chinese', code: 'CN' },
+    { label: 'Czech', code: 'CZ' },
+    { label: 'Danish', code: 'DK' },
+    { label: 'Dutch', code: 'NL' },
+    { label: 'Estonian', code: 'EE' },
+    { label: 'Finnish', code: 'FI' },
+    { label: 'French', code: 'FR' },
+    { label: 'German', code: 'DE' },
+    { label: 'Greek', code: 'GR' },
+    { label: 'Hungarian', code: 'HU' },
+    { label: 'Indonesian', code: 'ID' },
+    { label: 'Italian', code: 'IT' },
+    { label: 'Japanese', code: 'JP' },
+    { label: 'Korean', code: 'KR' },
+    { label: 'Latvian', code: 'LV' },
+    { label: 'Lithuanian', code: 'LT' },
+    { label: 'Norwegian', code: 'NO' },
+    { label: 'Polish', code: 'PL' },
+    { label: 'Portuguese', code: 'PT' },
+    { label: 'Romanian', code: 'RO' },
+    { label: 'Russian', code: 'RU' },
+    { label: 'Slovak', code: 'SK' },
+    { label: 'Slovenian', code: 'SI' },
+    { label: 'Swedish', code: 'SE' },
+    { label: 'Turkish', code: 'TR' },
+    { label: 'Ukrainian', code: 'UA' },
+  ]);
   const handleSingup = () => {
     const serverUrl = "https://copper-pattern-402806.ew.r.appspot.com/signup";
 
@@ -16,7 +48,7 @@ export default function Singup() {
       email: email,
       username: username,
       password: password,
-      language: selectedCountry,
+      language: selectedCountry.label,
     };
     const emailRegex = /^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,6}$/;
     if (!emailRegex.test(email) || email.length > 28) {
@@ -60,11 +92,20 @@ export default function Singup() {
         setError("Network error");
       });
   };
-  const countries = ["Select your language:","English", "Spanish", "French","German","Italian","Chinese","Japanese","Korean","Arabic","Portugese"];
+  
+
   const handleCountryChange = (index, value) => {
     setSelectedCountry(value);
   };
-
+  const renderDropdownRow = (country) => {
+    console.log(country)
+    return (
+      <View style={{ flexDirection: 'row', alignItems: 'center'}}>
+        <Flag code={'ES'} size={16} style={{ marginRight: 10 }} />
+        <Text>{country.label}</Text>
+      </View>
+    );
+  };
   return (
     <View style={{ flex: 1, backgroundColor: '#ff9a00' }}>
       <View style={{
@@ -102,11 +143,12 @@ export default function Singup() {
   onChangeText={(text) => setPassword(text)} 
   value={password} 
 />
-        <ModalDropdown
+        <ModalDropdown 
           options={countries}
           onSelect={handleCountryChange}
           defaultValue="Select a language"
-          style={{ margin: 10,alignSelf:'center' }}
+          renderRow={renderDropdownRow}
+          style={{ margin: 10, alignSelf: 'center'}}
         />
         {error !== '' && ( 
         <Text style={{ color: 'red', fontWeight: 'bold', marginTop: 10 }}>

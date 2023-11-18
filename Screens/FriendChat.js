@@ -7,26 +7,53 @@ import { useNavigation } from '@react-navigation/native';
 import * as SQLite from 'expo-sqlite';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Flag from 'react-native-flags';
+import useGlobalBackHandler from '../hooks/useGlobalBackHandler';
 const getFlagCode = (language) => {
   const languageToCodeMapping = {
-    "Spanish": 'ES',
-    "English":'GB',
-    "French":'FR' 
+    'Spanish': 'ES',
+    'English': 'GB',
+    'Bulgarian': 'BG',
+    'Chinese': 'CN',
+    'Czech': 'CZ',
+    'Danish': 'DK',
+    'Dutch': 'NL',
+    'Estonian': 'EE',
+    'Finnish': 'FI',
+    'French': 'FR',
+    'German': 'DE',
+    'Greek': 'GR',
+    'Hungarian': 'HU',
+    'Indonesian': 'ID',
+    'Italian': 'IT',
+    'Japanese': 'JP',
+    'Korean': 'KR',
+    'Latvian': 'LV',
+    'Lithuanian': 'LT',
+    'Norwegian': 'NO',
+    'Polish': 'PL',
+    'Portuguese': 'PT',
+    'Romanian': 'RO',
+    'Russian': 'RU',
+    'Slovak': 'SK',
+    'Slovenian': 'SI',
+    'Swedish': 'SE',
+    'Turkish': 'TR',
+    'Ukrainian': 'UA',
   };
-  console.log(language)
-  return languageToCodeMapping[language] || 'EU'; 
+  return languageToCodeMapping[language] || 'EU';
 };
 const FriendChat = ({ route }) => {
   const [messages, setMessages] = useState([]);
-  
+  const [my_language,setMyLanguage]=useState('null');
   const [newMessage, setNewMessage] = useState('');
   const image=route.params.friend.photo;
   const flatList = useRef(null);
   const friend_language=route.params.friend.language;
-  const [my_language,setUserLanguage]= useState('null');
   const socket = useSocket();
   const db = SQLite.openDatabase("CoralCache.db");
   const chatroom_id = route.params.friend.id;
+  const navigator=useNavigation();
+  useGlobalBackHandler();
   function generateUUID() {
     let d = new Date().getTime();
     const uuid = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
@@ -81,13 +108,12 @@ const FriendChat = ({ route }) => {
   
   
   const loadMessages = async () => {
+    if(my_language=='null'){
+      let language=await AsyncStorage.getItem('user_language')
+      console.log(language)
+      setMyLanguage(language)
+    }
     try {
-      if(my_language=='null'){
-        let to_language=await AsyncStorage.getItem('user_language')
-        console.log('SETTING GUNOIU ASTA DE APLICATIE LANGUAGE CA: ')
-        console.log(to_language)
-        setUserLanguage(to_language)
-      }
       db.transaction(tx => {
         tx.executeSql(
           "SELECT * FROM message WHERE chatroom_id = ? ORDER BY timestamp ASC;",
@@ -141,7 +167,7 @@ const FriendChat = ({ route }) => {
   
       const data = await response.json();
       console.log(data);
-      console.log(data)
+      return data
     } catch (error) {
       console.error('Error during translation:', error);
     }
@@ -184,18 +210,20 @@ const FriendChat = ({ route }) => {
           })
           
         }else{
-          language=getFlagCode(my_language)
+          let to_language=await AsyncStorage.getItem('user_language')
+          let target=getFlagCode(to_language)
           console.log('Recieved an message: ')
           console.log(data)
           console.log('translating this message in language: ')
-          console.log(language)
-          translateText(data.message,language).then((translation_result)=>{
-            console.log('translation is: ')
-            console.log(translation_result)
-            translation=data
-            translation.message=translation_result.translations[0].text
-            console.log(translation)
-            saveMessage(translation.message,local)
+          console.log(target)
+          result=await translateText(data.message,target)
+        
+          console.log('translation is: ')
+          console.log(result)
+          data.message=result.translations[0].text
+          console.log('after translation: ')
+          console.log(data)
+            saveMessage(data.message,local)
             .then((mirroredMessage)=>{
             console.log(mirroredMessage)
             setMessages((prevMessages) => {
@@ -204,7 +232,7 @@ const FriendChat = ({ route }) => {
             });
           })
           callback();
-        })};
+        };
       }
       });
       try{
@@ -282,7 +310,9 @@ const FriendChat = ({ route }) => {
   return (
     <View style={{ flex: 1}}>
         <View style={{flexDirection: 'row', alignItems: 'center',justifyContent:'space-between',padding:30}}>
-        <TouchableOpacity>
+        <TouchableOpacity onPress={()=>{
+          navigator.navigate('Home')
+        }}>
         <FontAwesome name="angle-left" size={30} color="#ff9a00" />
         </TouchableOpacity>
         <View style={{flexDirection:'row',alignItems:'center'}}>
