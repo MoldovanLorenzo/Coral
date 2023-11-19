@@ -16,7 +16,8 @@ const getFlagCode = (language) => {
   console.log(language)
   return languageToCodeMapping[language] || 'EU'; 
 };
-const FriendChat = ({ route }) => {
+const FriendChat = ({ route, isDarkMode }) => {
+  const navigation = useNavigation();
   const [messages, setMessages] = useState([]);
   
   const [newMessage, setNewMessage] = useState('');
@@ -113,6 +114,10 @@ const FriendChat = ({ route }) => {
       });
       setNewMessage('');
     }
+  };
+
+  const handleNavigateHome = () => {
+    navigation.navigate('Home');
   };
   
   
@@ -280,9 +285,9 @@ const FriendChat = ({ route }) => {
     }
     
   return (
-    <View style={{ flex: 1}}>
+    <View style={{ flex: 1, backgroundColor: isDarkMode ? '#191919' : 'white' }}>
         <View style={{flexDirection: 'row', alignItems: 'center',justifyContent:'space-between',padding:30}}>
-        <TouchableOpacity>
+        <TouchableOpacity onPress={handleNavigateHome}>
         <FontAwesome name="angle-left" size={30} color="#ff9a00" />
         </TouchableOpacity>
         <View style={{flexDirection:'row',alignItems:'center'}}>

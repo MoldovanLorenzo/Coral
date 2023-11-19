@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { View, Text, TextInput, TouchableOpacity } from 'react-native';
 import ModalDropdown from 'react-native-modal-dropdown';
 import { useNavigation } from '@react-navigation/native';
+import Language from "./SettingsScreens/Language";
 export default function Singup() {
   const navigation = useNavigation();
   const [email, setEmail]=useState("")
@@ -103,11 +104,12 @@ export default function Singup() {
   value={password} 
 />
         <ModalDropdown
-          options={countries}
-          onSelect={handleCountryChange}
-          defaultValue="Select a language"
-          style={{ margin: 10,alignSelf:'center' }}
-        />
+        options={countries}
+        onSelect={(index, value) => handleCountryChange(value)}
+        defaultValue="Select a language"
+        style={{ margin: 10, alignSelf: 'center' }}
+      />
+      <Language selectedCountry={selectedCountry} />
         {error !== '' && ( 
         <Text style={{ color: 'red', fontWeight: 'bold', marginTop: 10 }}>
           {error}

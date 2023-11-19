@@ -4,7 +4,7 @@ import { FontAwesome } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import AsyncStorage from "@react-native-async-storage/async-storage"; 
 import Flag from 'react-native-flags';
-const FriendsFinder = () => {
+const FriendsFinder = ({isDarkMode}) => {
   const navigation = useNavigation();
   const [searchText, setSearchText] = useState('');
   const [searchResults, setSearchResults] = useState([]);
@@ -60,7 +60,7 @@ const FriendsFinder = () => {
   };
 
   return (
-    <View style={styles.container}>
+    <View style={{ flex: 1, backgroundColor: isDarkMode ? '#191919' : 'white' }}>
       <View style={styles.header}>
         <TouchableOpacity onPress={handleNavigateHome}>
           <FontAwesome name="angle-left" size={30} color="#ff9a00" />
@@ -188,7 +188,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     padding: 30,
     alignItems: 'center',
-    backgroundColor: 'white',
+    backgroundColor: 'black',
   },
   flagContainer: {
     position: 'absolute',
@@ -202,7 +202,8 @@ const styles = StyleSheet.create({
   headerText: {
     fontSize: 20,
     alignSelf: 'center',
-    fontWeight:'bold'
+    fontWeight:'bold',
+    color: "white",
   },
   inputContainer: {
     marginTop: 10,

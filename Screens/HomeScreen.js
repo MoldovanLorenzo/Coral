@@ -248,7 +248,7 @@ const HomeScreen = ({ isDarkMode, setIsDarkMode, route}) => {
     }
    }, [isFocused, route.params]);
     const handleFriendSelection = (friend) => {
-      navigation.navigate('FriendChat', {friend,authToken});
+      navigation.navigate('FriendChat', {friend,authToken,isDarkMode});
     };
 
     const handleSettingsSelection = () => {
@@ -256,7 +256,7 @@ const HomeScreen = ({ isDarkMode, setIsDarkMode, route}) => {
     };
 
     const handleFriendsFinderSelection = () => {
-      navigation.navigate('FriendsFinder');
+      navigation.navigate('FriendsFinder',{isDarkMode});
     };
 
   return (
@@ -356,6 +356,7 @@ const HomeScreen = ({ isDarkMode, setIsDarkMode, route}) => {
           <View style={{alignSelf: 'center'}}><Text style={{alignSelf:'center'}}>Coming Soon...</Text></View>
           </FlatList>
         )}
+         
       </View>
   );
   };
