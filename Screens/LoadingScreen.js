@@ -1,6 +1,5 @@
 import React from 'react';
 import { View, StyleSheet, Image,Text } from 'react-native';
-import LottieView from 'lottie-react-native';
 
 const LoadingScreen = () => {
   return (

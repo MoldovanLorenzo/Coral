@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, ScrollView,Image} from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView,Image, Linking} from 'react-native';
 import { FontAwesome } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -84,17 +84,34 @@ const handleProfileSelection = async () => {
 
 
   const handleAsisteceScreenSelection = () => {
-    navigation.navigate('Asistence');
+    const supportEmail = 'coralsuport@gmail.com';
+
+     // Construiește subiectul și corpul e-mailului
+     const subject = 'Cerere de asistență';
+     const body = 'Salut, \n\nVreau să solicit asistență cu privire la următoarea problemă: ';
+
+     // Construiește adresa URL pentru deschiderea aplicației de e-mail cu e-mailul pregătit
+     const emailUrl = `mailto:${supportEmail}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+
+     // Deschide adresa URL utilizând funcția Linking.openURL
+     Linking.openURL(emailUrl)
+    .catch((err) => console.error('Nu s-a putut deschide aplicația de e-mail:', err));
   };
   const handlFeedbadScreenSelection = () => {
-    navigation.navigate('Feedback');
+    const storeUrl = Platform.OS === 'android'
+    ? 'https://play.google.com/store/apps/details?id=com.tedious.app'
+    : 'https://apps.apple.com/us/app/tedious/id1234567890';  // înlocuiește cu Bundle ID-ul real al aplicației tale
+
+  // Deschide URL-ul utilizând funcția Linking.openURL
+     Linking.openURL(storeUrl)
+    .catch((err) => console.error('Nu s-a putut deschide URL-ul:', err));
   };
   const handleLanguageScreenSelection = () => {
     navigation.navigate('Language');
   };
-  const handleNotificationsScreenSelection = () => {
+  /*const handleNotificationsScreenSelection = () => {
     navigation.navigate('Notifications');
-  };
+  };*/
   const handleThemesScreenSelection = () => {
     navigation.navigate('Themes');
   };
@@ -141,12 +158,7 @@ const handleProfileSelection = async () => {
           </View>
         </View>
       </TouchableOpacity>
-      <TouchableOpacity onPress={handleNotificationsScreenSelection}>
-<View style={{paddingLeft:30,height:70,width:300, backgroundColor: isDarkMode ? '#191919' : 'lightgray',borderRadius:30,alignSelf:'center',marginTop:20}}>
-<FontAwesome name="bell" size={30} color='gray' style={{position:'relative',top:20}}/>
-<Text style={{alignSelf:'center',fontSize:20,fontWeight:'bold',color:'gray',position:'relative',bottom:10}}>Notifications</Text>
-</View>
-</TouchableOpacity>
+ 
 <TouchableOpacity onPress={handleLanguageScreenSelection}>
 <View style={{paddingLeft:30,height:70,width:300,borderRadius:30,alignSelf:'center',marginTop:20,backgroundColor: isDarkMode ? '#191919' : 'lightgray'}}>
 <FontAwesome name="language" size={30} color='gray' style={{position:'relative',top:20}}/>
@@ -166,10 +178,10 @@ const handleProfileSelection = async () => {
 </View>
 </TouchableOpacity>
 <TouchableOpacity onPress={handlFeedbadScreenSelection}>
-<View style={{paddingLeft:30,height:70,width:300,backgroundColor:'lightgray',borderRadius:30,alignSelf:'center',marginTop:20,backgroundColor: isDarkMode ? '#191919' : 'lightgray'}}>
-<FontAwesome name="comment" size={30} color='gray' style={{position:'relative',top:20}}/>
-<Text style={{alignSelf:'center',fontSize:20,fontWeight:'bold',color:'gray',position:'relative',bottom:10}}>Feedback</Text>
-</View>
+  <View style={{ paddingLeft: 30, height: 70, width: 300, backgroundColor: 'lightgray', borderRadius: 30, alignSelf: 'center', marginTop: 20, backgroundColor: isDarkMode ? '#191919' : 'lightgray' }}>
+    <FontAwesome name="comment" size={30} color='gray' style={{ position: 'relative', top: 20 }} />
+    <Text style={{ alignSelf: 'center', fontSize: 20, fontWeight: 'bold', color: 'gray', position: 'relative', bottom: 10 }}>Feedback</Text>
+  </View>
 </TouchableOpacity>
 <TouchableOpacity onPress={handleSingout}>
 <View style={{paddingLeft:30,height:70,width:300,borderRadius:30,alignSelf:'center',marginTop:20,backgroundColor: isDarkMode ? '#191919' : '#ff7b7b'}}>

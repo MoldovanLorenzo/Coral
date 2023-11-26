@@ -7,7 +7,6 @@ import { useNavigation } from '@react-navigation/native';
 import * as SQLite from 'expo-sqlite';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Flag from 'react-native-flags';
-import useGlobalBackHandler from '../hooks/useGlobalBackHandler';
 const getFlagCode = (language) => {
   const languageToCodeMapping = {
     'Spanish': 'ES',
@@ -53,7 +52,7 @@ const FriendChat = ({ route }) => {
   const db = SQLite.openDatabase("CoralCache.db");
   const chatroom_id = route.params.friend.id;
   const navigator=useNavigation();
-  useGlobalBackHandler();
+ 
   function generateUUID() {
     let d = new Date().getTime();
     const uuid = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
@@ -173,8 +172,8 @@ const FriendChat = ({ route }) => {
     }
   };
     useEffect(()=>{
-      if (flatList.current) {
-        flatList.current.scrollToEnd({ animated: true });
+      if (flatList.current && messages.length > 0) {
+        flatList.current.scrollToEnd({ animated: false });
       }
     },[messages])
     useEffect(() => {
@@ -235,11 +234,15 @@ const FriendChat = ({ route }) => {
         };
       }
       });
-      try{
-        console.log('Loading messagess..')
+      try {
+        console.log('Loading messagess..');
         loadMessages();
-      }catch{
-        console.log('Failed loading messages from storage!')
+      } catch {
+        console.log('Failed loading messages from storage!');
+      } finally {
+        if (flatList.current) {
+          flatList.current.scrollToEnd({ animated: true });
+        }
       }
       return () => {
         socket.off('non_ack_message');
@@ -277,14 +280,12 @@ const FriendChat = ({ route }) => {
         },
       });
       if (item.type === 'dateSeparator') {
-        // Render date separator
         return (
           <View style={{ alignItems: 'center', padding: 10 }}>
             <Text style={{ fontSize: 12, color: 'lightgray' }}>{item.date}</Text>
           </View>
         );
       } else {
-        // Render message
         const isSentMessage = item.local_sender == 1;
         return (
           <View style={[
@@ -330,12 +331,13 @@ const FriendChat = ({ route }) => {
         </View>  
         </TouchableOpacity>
         </View>
-        <FlatList 
+        <FlatList
   data={prepareMessages(messages)}
   ref={flatList}
   keyExtractor={(item, index) => item.id || index.toString()}
-  renderItem={renderChatItem}/>
-         
+  renderItem={renderChatItem}
+  onContentSizeChange={() => flatList.current.scrollToEnd({ animated: false })}
+/>
         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
         <TextInput
           style={{ flex: 1, height: 50, borderColor: 'gray', borderWidth: 1, margin: 5, borderRadius:25,paddingLeft:15 }}

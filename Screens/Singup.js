@@ -5,12 +5,12 @@ import { useNavigation } from '@react-navigation/native';
 import Flag from 'react-native-flags';
 export default function Singup() {
   const navigation = useNavigation();
-  const [email, setEmail]=useState("")
+  const [email, setEmail] = useState("");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
-  const [selectedCountry, setSelectedCountry] = useState("");
+  const [selectedCountry, setSelectedCountry] = useState(null);
   const [error, setError] = useState('');
-  const [countries,setCountries] = useState([
+  const [countries, setCountries] = useState([
     { label: 'Spanish', code: 'ES' },
     { label: 'English', code: 'GB' },
     { label: 'Bulgarian', code: 'BG' },
@@ -64,7 +64,7 @@ export default function Singup() {
       return;
     }
 
-    const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{7,19}$/;
+    const passwordRegex = /^(?=.[A-Za-z])(?=.\d)[A-Za-z\d]{7,19}$/;
     if (!passwordRegex.test(password)) {
       setError('Password must be 7-19 characters, and include both letters and numbers.');
       console.log('failed password check')
@@ -96,15 +96,31 @@ export default function Singup() {
 
   const handleCountryChange = (index, value) => {
     setSelectedCountry(value);
+    console.log('Just set selected country to:')
+    console.log(selectedCountry)
   };
-  const renderDropdownRow = (country) => {
-    console.log(country)
+  const renderDropdownRow = (country, index, isSelected) => {
     return (
-      <View style={{ flexDirection: 'row', alignItems: 'center'}}>
-        <Flag code={'ES'} size={16} style={{ marginRight: 10 }} />
+      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+        <Flag code={country.code} size={16} style={{ marginRight: 10 }} />
         <Text>{country.label}</Text>
       </View>
     );
+  };
+  const renderSelectedValue = () => {
+    if (selectedCountry) {
+      return (
+        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          <Flag code={selectedCountry.code} size={16} style={{ marginRight: 10 }} />
+          <Text>{selectedCountry.label}</Text>
+        </View>
+      );
+    } else {
+      return <Text>Select a language</Text>;
+    }
+  };
+  const renderTextForOption = (option) => {
+    return option.label; 
   };
   return (
     <View style={{ flex: 1, backgroundColor: '#ff9a00' }}>
@@ -143,13 +159,14 @@ export default function Singup() {
   onChangeText={(text) => setPassword(text)} 
   value={password} 
 />
-        <ModalDropdown 
-          options={countries}
-          onSelect={handleCountryChange}
-          defaultValue="Select a language"
-          renderRow={renderDropdownRow}
-          style={{ margin: 10, alignSelf: 'center'}}
-        />
+<ModalDropdown
+        options={countries}
+        onSelect={handleCountryChange}
+        defaultValue={"Select a value"}
+        renderRow={renderDropdownRow}
+        renderButtonText={renderTextForOption}
+        style={{ margin: 10, alignSelf: 'center' }}
+      />
         {error !== '' && ( 
         <Text style={{ color: 'red', fontWeight: 'bold', marginTop: 10 }}>
           {error}
