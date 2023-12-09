@@ -7,6 +7,7 @@ import { collection, addDoc, where, query , orderBy, getDocs, onSnapshot } from 
 import { TranslationProvider, useTranslations } from '../hooks/translationContext';
 import { useNavigation } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as ImagePicker from 'expo-image-picker';
 import Flag from 'react-native-flags';
 const FriendChat = ({ route }) => {
   const [messages, setMessages] = useState([]);
@@ -19,7 +20,8 @@ const FriendChat = ({ route }) => {
   const friend_language=route.params.friend.language;
   const chatroom_id = route.params.friend.chatroom_id;
   const navigator=useNavigation();
- 
+  const [selectedImage, setSelectedImage] = useState(null);
+
   const prepareMessages = (messages) => {
     const sortedMessages = messages.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
     const preparedMessages = [];
@@ -34,7 +36,29 @@ const FriendChat = ({ route }) => {
     });
     return preparedMessages;
   };
+  const pickImage = async () => {
+    try {
+      const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      
+      if (!permissionResult.granted) {
+        throw new Error('Permission to access camera roll is required!');
+      }
   
+      const pickerResult = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: false, 
+        aspect: [4, 3],
+        quality: 0.5, 
+        base64: true, 
+      });
+  
+      if (!pickerResult.cancelled) {
+        setSelectedImage(pickerResult.base64);
+      }
+    } catch (error) {
+      alert('Error picking image:', error);
+    }
+  };
   const loadMessages = async () => {
     if(my_language=='null'){
       let language=await AsyncStorage.getItem('user_language')
@@ -73,7 +97,7 @@ const FriendChat = ({ route }) => {
     }
   };
   const sendMessage = async () => {
-    if (newMessage.trim() !== '') {
+    if (newMessage.trim() !== '' || selectedImage) {
       try {
         if(currentUserID==null){
           dcurrentUserID = await AsyncStorage.getItem('user_id');
@@ -82,11 +106,12 @@ const FriendChat = ({ route }) => {
         console.log('Sending message: ' + newMessage + ' to chatroom of id: ' + chatroom_id);
         translated_message=await translateText(newMessage,friend_language)
         const messagesCollection = collection(FIREBASE_FIRESTORE, 'messages');
+        console.log(translated_message);
         const newDoc={
           sender_id: currentUserID,
           content: newMessage,
           translated_content:translated_message.translations[0].text,
-          photo_content: false,
+          photo_content: selectedImage,
           chatroom_id: chatroom_id,
           timestamp:new Date().toISOString(),
           sender_language:my_language,
@@ -108,11 +133,34 @@ const FriendChat = ({ route }) => {
   const translateText = async (toTranslate, targetLanguage) => {
     const url = 'https://api-free.deepl.com/v2/translate';
     const authKey = '5528c6fd-705c-5784-afd2-edba369cb1d9:fx'; 
-    const adjustedTargetLanguage = targetLanguage === 'GB' ? 'EN' : targetLanguage;
+    const countryCodeMapping = {
+      BG: 'BG',
+      CN: 'ZH',
+      CZ: 'CS',
+      DK: 'DA',
+      EE: 'ET',
+      GR: 'EL',
+      HU: 'HU',
+      ID: 'ID',
+      JP: 'JA',
+      KR: 'KO',
+      LT: 'LT',
+      NO: 'NB',
+      RO: 'RO',
+      RU: 'RU',
+      SI: 'SL',
+      TR: 'TR',
+      UA: 'UK',
+    };
+    if (countryCodeMapping.hasOwnProperty(targetLanguage)) {
+      targetLanguage = countryCodeMapping[targetLanguage]; 
+    }
+    console.log(targetLanguage);
     const requestBody = {
       text: [toTranslate],
-      target_lang: adjustedTargetLanguage,
+      target_lang: targetLanguage,
     };
+    console.log(requestBody);
     try {
       const response = await fetch(url, {
         method: 'POST',
@@ -154,6 +202,7 @@ const FriendChat = ({ route }) => {
     });
     return () => unsubscribe();
     },[chatroom_id]);
+    
     const renderChatItem = ({ item }) => {
       const styles = StyleSheet.create({
         messageContainer: {
@@ -180,22 +229,61 @@ const FriendChat = ({ route }) => {
         },
         messageText: {
           fontSize: 14,
-          color:'white',
-          
+          color: 'white',
         },
+        imageMessage: {
+          width: 150,
+          height: 150,
+          borderRadius: 10,
+        },
+        messageContainerWithPhoto: {
+          flexDirection: 'column',
+          alignItems: 'flex-start', 
+          marginBottom: 5, 
+        }
       });
+    
       if (item.type === 'dateSeparator') {
         return (
           <View style={{ alignItems: 'center', padding: 10 }}>
             <Text style={{ fontSize: 12, color: 'lightgray' }}>{item.date}</Text>
           </View>
         );
+      } else if (item.photo_content !== null && item.photo_content !== false) {
+        const isSentMessage = item.sender_id === currentUserID;
+    
+        return (
+          <View style={{ flexDirection: 'column' }}>
+            <View style={[
+              styles.messageContainer,
+              isSentMessage ? { justifyContent: 'flex-end' } : { justifyContent: 'flex-start' },
+            ]}>
+              <Image
+                source={{ uri: `data:image/jpeg;base64,${item.photo_content}` }}
+                style={[
+                  styles.imageMessage,
+                  isSentMessage ? styles.sentMessage : styles.receivedMessage
+                ]}
+              />
+            </View>
+            {item.content.trim() !== '' && (
+              <View style={[
+                styles.messageContainer,
+                isSentMessage ? { justifyContent: 'flex-end' } : { justifyContent: 'flex-start'},
+              ]}>
+                <View style={[
+                  styles.messageBubble,
+                  isSentMessage ? styles.sentMessage : styles.receivedMessage
+                ]}>
+                  <Text style={styles.messageText}>{item.content}</Text>
+                </View>
+              </View>
+            )}
+          </View>
+        );
       } else {
-        const isSentMessage = item.sender_id==currentUserID;
-        console.log('IN RANDAREA MESAJELEOR, AVEM: ')
-        console.log(item)
-        console.log(currentUserID)
-
+        const isSentMessage = item.sender_id === currentUserID;
+    
         return (
           <View style={[
             styles.messageContainer,
@@ -205,12 +293,13 @@ const FriendChat = ({ route }) => {
               styles.messageBubble,
               isSentMessage ? styles.sentMessage : styles.receivedMessage
             ]}>
-              <Text style={styles.messageText}>{ isSentMessage? item.content : item.translated_content}</Text>
+              <Text style={styles.messageText}>{isSentMessage ? item.content : item.translated_content}</Text>
             </View>
           </View>
         );
       }
-    }
+    };
+    
     
   return (
     <TranslationProvider>
@@ -247,7 +336,35 @@ const FriendChat = ({ route }) => {
   keyExtractor={(item, index) => item.id || index.toString()}
   renderItem={renderChatItem}
   onContentSizeChange={() => flatList.current.scrollToEnd({ animated: false })}
-/>
+/>       
+    {selectedImage && (
+    <View style={{marginLeft:"5%",marginTop: 10,width:100,height:100}}>
+    <Image
+      source={{ uri: `data:image/jpeg;base64,${selectedImage}` }}
+      style={{
+        width: 100,
+        height: 100,
+        borderRadius: 10,
+        opacity: 0.7, // Adjust the opacity as needed
+      }}/>
+      <TouchableOpacity
+      style={{
+        position: 'absolute',
+        top: -5,
+        right: -10,
+        zIndex: 2,
+        height:'25px',
+        width:'25px',
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        borderRadius: 10,
+        padding: 5,
+      }}
+      onPress={() => setSelectedImage(null)}
+    >
+    <FontAwesome name="ban" size={18} color="white" />  
+    </TouchableOpacity>
+        </View>
+         )}
         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
         <TextInput
           style={{ flex: 1, height: 50, borderColor: 'gray', borderWidth: 1, margin: 5, borderRadius:25,paddingLeft:15 }}
@@ -257,9 +374,15 @@ const FriendChat = ({ route }) => {
           />
           <TouchableOpacity
             style={{ backgroundColor: '#ff9a00', padding: 10, margin: 5, borderRadius: 25}}
+            onPress={pickImage}
+          >
+            <FontAwesome name="image" size={18} color="white" />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={{ backgroundColor: '#ff9a00', padding: 10, margin: 5, borderRadius: 25}}
             onPress={sendMessage}
           >
-            <FontAwesome name="paper-plane" size={24} color="white" />
+            <FontAwesome name="paper-plane" size={18} color="white" />
           </TouchableOpacity>
         </View>
       </View>

@@ -20,11 +20,34 @@ export default function Login() {
   const translateText = async (toTranslate, targetLanguage) => {
     const url = 'https://api-free.deepl.com/v2/translate';
     const authKey = '5528c6fd-705c-5784-afd2-edba369cb1d9:fx'; 
-    const adjustedTargetLanguage = targetLanguage === 'GB' ? 'EN' : targetLanguage;
+    const countryCodeMapping = {
+      BG: 'BG',
+      CN: 'ZH',
+      CZ: 'CS',
+      DK: 'DA',
+      EE: 'ET',
+      GR: 'EL',
+      HU: 'HU',
+      ID: 'ID',
+      JP: 'JA',
+      KR: 'KO',
+      LT: 'LT',
+      NO: 'NB',
+      RO: 'RO',
+      RU: 'RU',
+      SI: 'SL',
+      TR: 'TR',
+      UA: 'UK',
+    };
+    if (countryCodeMapping.hasOwnProperty(targetLanguage)) {
+      targetLanguage = countryCodeMapping[targetLanguage]; 
+    }
+    console.log(targetLanguage);
     const requestBody = {
       text: [toTranslate],
-      target_lang: adjustedTargetLanguage,
+      target_lang: targetLanguage,
     };
+    console.log(requestBody);
     try {
       const response = await fetch(url, {
         method: 'POST',
