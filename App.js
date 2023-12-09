@@ -4,7 +4,6 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from "@react-navigation/stack";
 import HomeScreen from "./Screens/HomeScreen";
 import FriendChat from "./Screens/FriendChat";
-import ChatComponent from "./Screens/Chat";
 import Settings from "./Screens/Settings";
 import Singup from "./Screens/Singup";
 import Login from "./Screens/Login";
@@ -18,7 +17,7 @@ import Notifications from "./Screens/SettingsScreens/Notifications";
 import Language from "./Screens/SettingsScreens/Language";
 import FrinendsRequestScreen from"./Screens/FriendsReqestScreen"
 import { SocketProvider } from "./hooks/socketInstance";
-import { Socket } from "socket.io-client";
+import { TranslationProvider } from "./hooks/translationContext";
 
 const Stack = createStackNavigator();
 
@@ -27,6 +26,7 @@ const App = () => {
 
   return (
     <SocketProvider>
+    <TranslationProvider> 
     <NavigationContainer>
       <Stack.Navigator>
         <Stack.Screen
@@ -111,17 +111,6 @@ const App = () => {
           options={{ headerShown: false }}
         />
         <Stack.Screen
-          name="ChatRoom"
-          children={(props) => (
-            <ChatComponent
-              {...props}
-              isDarkMode={isDarkMode}
-              setIsDarkMode={setIsDarkMode}
-            />
-          )}
-          options={{ headerShown: false }}
-        />
-        <Stack.Screen
           name="Settings"
           children={(props) => (
             <Settings
@@ -178,6 +167,7 @@ const App = () => {
         />
       </Stack.Navigator>
     </NavigationContainer>
+    </TranslationProvider> 
     </SocketProvider>
   );
 };

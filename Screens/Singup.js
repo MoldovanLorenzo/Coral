@@ -3,8 +3,12 @@ import { View, Text, TextInput, TouchableOpacity } from 'react-native';
 import ModalDropdown from 'react-native-modal-dropdown';
 import { useNavigation } from '@react-navigation/native';
 import Flag from 'react-native-flags';
+import { FIREBASE_AUTH, FIREBASE_FIRESTORE } from "../config/firebase"
+import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
+import { collection, doc,setDoc } from "firebase/firestore"
 export default function Singup() {
   const navigation = useNavigation();
+  const auth= FIREBASE_AUTH;
   const [email, setEmail] = useState("");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -41,56 +45,26 @@ export default function Singup() {
     { label: 'Turkish', code: 'TR' },
     { label: 'Ukrainian', code: 'UA' },
   ]);
-  const handleSingup = () => {
-    const serverUrl = "https://copper-pattern-402806.ew.r.appspot.com/signup";
-
-    const data = {
-      email: email,
-      username: username,
-      password: password,
-      language: selectedCountry.label,
-    };
-    const emailRegex = /^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,6}$/;
-    if (!emailRegex.test(email) || email.length > 28) {
-      setError('Please enter a valid email address with less than 28 characters.');
-      return;
-    }
-    if (username.length >= 25) {
-      setError('Username should be less than 25 characters.');
-      return;
-    }
-    if (!selectedCountry) {
-      setError('Please select a language.');
-      return;
-    }
-
-    const passwordRegex = /^(?=.[A-Za-z])(?=.\d)[A-Za-z\d]{7,19}$/;
-    if (!passwordRegex.test(password)) {
-      setError('Password must be 7-19 characters, and include both letters and numbers.');
-      console.log('failed password check')
-      return;
-    }
-    fetch(serverUrl, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(data),
-    })
-      .then((response) => response.json())
-      .then((responseData) => {
-        if(responseData.response=='OK'){
-          navigation.navigate('Login')
-          console.log(responseData)
-        }else{
-          setError("Unknown error when signing up, please try again");
-          console.log(responseData)
-        }
-
+  const handleSingup = async () => {
+    try{
+      const response = await createUserWithEmailAndPassword(auth,email,password)
+      const user= response.user;
+      await updateProfile(user,{
+        displayName:username,
       })
-      .catch((error) => {
-        setError("Network error");
-      });
+      const usersCollection = collection(FIREBASE_FIRESTORE, 'users');
+      const userDocRef = doc(usersCollection, user.uid);
+
+       await setDoc(userDocRef, {
+  email: user.email,
+  displayName: user.displayName,
+  language: selectedCountry.code
+});
+      navigation.navigate('Login');
+    }catch(error){
+       console.log(error)
+       alert('Error during signup! '+ error.message);
+    }
   };
   
 

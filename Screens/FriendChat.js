@@ -2,72 +2,28 @@ import React, { useState, useEffect,useRef } from 'react';
 import { View, Image, FlatList, Text, TouchableOpacity, TextInput, StyleSheet } from 'react-native';
 import FontAwesome from 'react-native-vector-icons/FontAwesome';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons'
-import { SocketProvider, useSocket } from '../hooks/socketInstance';
+import { FIREBASE_FIRESTORE } from "../config/firebase"
+import { collection, addDoc, where, query , orderBy, getDocs, onSnapshot } from "firebase/firestore"
+import { TranslationProvider, useTranslations } from '../hooks/translationContext';
 import { useNavigation } from '@react-navigation/native';
-import * as SQLite from 'expo-sqlite';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Flag from 'react-native-flags';
-const getFlagCode = (language) => {
-  const languageToCodeMapping = {
-    'Spanish': 'ES',
-    'English': 'GB',
-    'Bulgarian': 'BG',
-    'Chinese': 'CN',
-    'Czech': 'CZ',
-    'Danish': 'DK',
-    'Dutch': 'NL',
-    'Estonian': 'EE',
-    'Finnish': 'FI',
-    'French': 'FR',
-    'German': 'DE',
-    'Greek': 'GR',
-    'Hungarian': 'HU',
-    'Indonesian': 'ID',
-    'Italian': 'IT',
-    'Japanese': 'JP',
-    'Korean': 'KR',
-    'Latvian': 'LV',
-    'Lithuanian': 'LT',
-    'Norwegian': 'NO',
-    'Polish': 'PL',
-    'Portuguese': 'PT',
-    'Romanian': 'RO',
-    'Russian': 'RU',
-    'Slovak': 'SK',
-    'Slovenian': 'SI',
-    'Swedish': 'SE',
-    'Turkish': 'TR',
-    'Ukrainian': 'UA',
-  };
-  return languageToCodeMapping[language] || 'EU';
-};
 const FriendChat = ({ route }) => {
   const [messages, setMessages] = useState([]);
   const [my_language,setMyLanguage]=useState('null');
   const [newMessage, setNewMessage] = useState('');
   const image=route.params.friend.photo;
   const flatList = useRef(null);
+  const cached_ui=useTranslations();
+  const [currentUserID, setCurrentUserID]=useState(null);
   const friend_language=route.params.friend.language;
-  const socket = useSocket();
-  const db = SQLite.openDatabase("CoralCache.db");
-  const chatroom_id = route.params.friend.id;
+  const chatroom_id = route.params.friend.chatroom_id;
   const navigator=useNavigation();
  
-  function generateUUID() {
-    let d = new Date().getTime();
-    const uuid = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-      const r = (d + Math.random() * 16) % 16 | 0;
-      d = Math.floor(d / 16);
-      return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
-    });
-    return uuid;
-  }
   const prepareMessages = (messages) => {
-    
     const sortedMessages = messages.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
     const preparedMessages = [];
     let lastDate = null;
-  
     sortedMessages.forEach((message) => {
       const messageDate = new Date(message.timestamp).toLocaleDateString();
       if (messageDate !== lastDate) {
@@ -76,88 +32,95 @@ const FriendChat = ({ route }) => {
       }
       preparedMessages.push(message);
     });
-    
     return preparedMessages;
   };
-  const saveMessage = (newMessage, local) => {
-    return new Promise((resolve, reject) => {
-      const mirroredMessage = {
-        id: generateUUID(),
-        content: newMessage,
-        local_sender: local,
-        chatroom_id: chatroom_id,
-        timestamp: new Date().toISOString()
-      };
-      db.transaction(tx => {
-        tx.executeSql(
-          "INSERT INTO message (id, content, local_sender, chatroom_id, timestamp) VALUES (?, ?, ?, ?, ?);",
-          [mirroredMessage.id, mirroredMessage.content, mirroredMessage.local_sender, mirroredMessage.chatroom_id, mirroredMessage.timestamp],
-          () => {
-            console.log("Message saved");
-            resolve(mirroredMessage);
-          },
-          error => {
-            console.error("Error saving message", error);
-            reject(error);
-          }
-        );
-      });
-    });
-  };
-  
   
   const loadMessages = async () => {
     if(my_language=='null'){
       let language=await AsyncStorage.getItem('user_language')
       console.log(language)
       setMyLanguage(language)
+    }if(currentUserID==null){
+      dcurrentUserID = await AsyncStorage.getItem('user_id');
+      setCurrentUserID(dcurrentUserID);
     }
     try {
-      db.transaction(tx => {
-        tx.executeSql(
-          "SELECT * FROM message WHERE chatroom_id = ? ORDER BY timestamp ASC;",
-          [chatroom_id],
-          (_, { rows }) => {
-            setMessages(rows._array);
-          },
-          error => { console.error("Error loading messages", error); }
-        );
+      const messagesRef = collection(FIREBASE_FIRESTORE, 'messages');
+      const messagesQuery = query(
+        messagesRef,
+        where('chatroom_id', '==', chatroom_id),
+        orderBy('timestamp', 'asc')
+      );
+      const messagesSnapshot = await getDocs(messagesQuery);
+      console.log('Loading snapshots!');
+      const fetchedMessages = [];
+      messagesSnapshot.forEach((messageDoc) => {
+        const messageData = messageDoc.data();
+        console.log(messageData)
+        fetchedMessages.push({
+          id: messageDoc.id,
+          content: messageData.content,
+          sender_id: messageData.sender_id,
+          photo_content: messageData.photo_content,
+          timestamp: messageData.timestamp,
+          translated_content:messageData.translated_content
+        });
       });
+  
+      setMessages(fetchedMessages);
     } catch (error) {
-      console.error('Database Error: ' + error.message);
+      console.error('Error loading messages:', error);
     }
   };
   const sendMessage = async () => {
     if (newMessage.trim() !== '') {
-      console.log('Sending message: ' + newMessage + ' to chatroom of id: ' + chatroom_id);
-      user_id=await AsyncStorage.getItem('user_id')
-      socket.emit('message', {
-        message: newMessage,
-        room: chatroom_id,
-        sender_id:user_id,
-      });
-      setNewMessage('');
+      try {
+        if(currentUserID==null){
+          dcurrentUserID = await AsyncStorage.getItem('user_id');
+          setCurrentUserID(dcurrentUserID);
+        }
+        console.log('Sending message: ' + newMessage + ' to chatroom of id: ' + chatroom_id);
+        translated_message=await translateText(newMessage,friend_language)
+        const messagesCollection = collection(FIREBASE_FIRESTORE, 'messages');
+        const newDoc={
+          sender_id: currentUserID,
+          content: newMessage,
+          translated_content:translated_message.translations[0].text,
+          photo_content: false,
+          chatroom_id: chatroom_id,
+          timestamp:new Date().toISOString(),
+          sender_language:my_language,
+          
+        }
+        await addDoc(messagesCollection,newDoc);
+        const updatedMessages = [
+          ...messages,
+          newDoc
+        ];
+  
+        setMessages(updatedMessages);
+        setNewMessage(' ');
+      } catch (error) {
+        console.error('Error sending message:', error);
+      }
     }
   };
-  
-  
-  const translateText = async (toTranslate,targetLanguage) => {
+  const translateText = async (toTranslate, targetLanguage) => {
     const url = 'https://api-free.deepl.com/v2/translate';
     const authKey = '5528c6fd-705c-5784-afd2-edba369cb1d9:fx'; 
+    const adjustedTargetLanguage = targetLanguage === 'GB' ? 'EN' : targetLanguage;
     const requestBody = {
       text: [toTranslate],
-      target_lang: targetLanguage,
+      target_lang: adjustedTargetLanguage,
     };
-  
     try {
       const response = await fetch(url, {
         method: 'POST',
         headers: {
           'Authorization': `DeepL-Auth-Key ${authKey}`,
-          'User-Agent': 'YourApp/1.2.3', 
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
         },
-        body: JSON.stringify(requestBody)
+        body: JSON.stringify(requestBody),
       });
   
       if (!response.ok) {
@@ -165,90 +128,32 @@ const FriendChat = ({ route }) => {
       }
   
       const data = await response.json();
-      console.log(data);
-      return data
+      return data;
     } catch (error) {
       console.error('Error during translation:', error);
+      throw error; 
     }
   };
+  
+  
     useEffect(()=>{
       if (flatList.current && messages.length > 0) {
         flatList.current.scrollToEnd({ animated: false });
       }
     },[messages])
     useEffect(() => {
-      socket.on('non_ack_message',async (data) => {
-        if(data.room==chatroom_id){
-          
-        console.log('Recieved non_ack')
-        const self_id=await AsyncStorage.getItem('user_id')
-        const local= data.sender_id==self_id
-        mirroredMessage= await saveMessage(data.message,local)
-        setMessages((prevMessages) => {
-            const updatedMessages = [...prevMessages, mirroredMessage];
-            return updatedMessages;
-          });
-        
-        }
+      loadMessages();
+      const messagesCollection = collection(FIREBASE_FIRESTORE, 'messages');
+      const messagesQuery = query(messagesCollection, where('chatroom_id', '==', chatroom_id));
+      const unsubscribe = onSnapshot(messagesQuery, (snapshot) => {
+      const newMessages = [];
+      snapshot.forEach((doc) => {
+        newMessages.push({ id: doc.id, ...doc.data() });
       });
-      socket.on('ack_message', async (data,callback) => {
-        if(data.room==chatroom_id){
-        console.log('Recieved ack message')
-        const self_id=await AsyncStorage.getItem('user_id')
-        const local= data.sender_id==self_id
-        console.log(data)
-        console.log(data.sender_id)
-        console.log(self_id)
-        if(local){
-          saveMessage(data.message,local).then((mirroredMessage)=>{
-            console.log(mirroredMessage)
-            setMessages((prevMessages) => {
-              const updatedMessages = [...prevMessages, mirroredMessage];
-              return updatedMessages;
-            });
-          })
-          
-        }else{
-          let to_language=await AsyncStorage.getItem('user_language')
-          let target=getFlagCode(to_language)
-          console.log('Recieved an message: ')
-          console.log(data)
-          console.log('translating this message in language: ')
-          console.log(target)
-          result=await translateText(data.message,target)
-        
-          console.log('translation is: ')
-          console.log(result)
-          data.message=result.translations[0].text
-          console.log('after translation: ')
-          console.log(data)
-            saveMessage(data.message,local)
-            .then((mirroredMessage)=>{
-            console.log(mirroredMessage)
-            setMessages((prevMessages) => {
-              const updatedMessages = [...prevMessages, mirroredMessage];
-              return updatedMessages;
-            });
-          })
-          callback();
-        };
-      }
-      });
-      try {
-        console.log('Loading messagess..');
-        loadMessages();
-      } catch {
-        console.log('Failed loading messages from storage!');
-      } finally {
-        if (flatList.current) {
-          flatList.current.scrollToEnd({ animated: true });
-        }
-      }
-      return () => {
-        socket.off('non_ack_message');
-        socket.off('ack_message');
-      };
-    }, [socket]);
+      setMessages(newMessages);
+    });
+    return () => unsubscribe();
+    },[chatroom_id]);
     const renderChatItem = ({ item }) => {
       const styles = StyleSheet.create({
         messageContainer: {
@@ -286,7 +191,11 @@ const FriendChat = ({ route }) => {
           </View>
         );
       } else {
-        const isSentMessage = item.local_sender == 1;
+        const isSentMessage = item.sender_id==currentUserID;
+        console.log('IN RANDAREA MESAJELEOR, AVEM: ')
+        console.log(item)
+        console.log(currentUserID)
+
         return (
           <View style={[
             styles.messageContainer,
@@ -296,7 +205,7 @@ const FriendChat = ({ route }) => {
               styles.messageBubble,
               isSentMessage ? styles.sentMessage : styles.receivedMessage
             ]}>
-              <Text style={styles.messageText}>{item.content}</Text>
+              <Text style={styles.messageText}>{ isSentMessage? item.content : item.translated_content}</Text>
             </View>
           </View>
         );
@@ -304,6 +213,7 @@ const FriendChat = ({ route }) => {
     }
     
   return (
+    <TranslationProvider>
     <View style={{ flex: 1}}>
         <View style={{flexDirection: 'row', alignItems: 'center',justifyContent:'space-between',padding:30}}>
         <TouchableOpacity onPress={()=>{
@@ -325,9 +235,9 @@ const FriendChat = ({ route }) => {
         </View>
         <TouchableOpacity>
         <View style={{flexDirection:'column',alignItems:'center',justifyContent:'space-around'}}>
-        <Flag code={getFlagCode(friend_language)} size={16} style={{marginBottom:-7,marginRight:15,height:20,width:20}}/>
+        <Flag code={friend_language} size={16} style={{marginBottom:-7,marginRight:15,height:20,width:20}}/>
         <MaterialCommunityIcons name="rotate-3d-variant" size={24} color="#ff9a00" />
-        <Flag code={getFlagCode(my_language)} size={16} style={{marginTop:-7,marginLeft:15,height:20,width:20}}/>  
+        <Flag code={my_language} size={16} style={{marginTop:-7,marginLeft:15,height:20,width:20}}/>  
         </View>  
         </TouchableOpacity>
         </View>
@@ -343,7 +253,7 @@ const FriendChat = ({ route }) => {
           style={{ flex: 1, height: 50, borderColor: 'gray', borderWidth: 1, margin: 5, borderRadius:25,paddingLeft:15 }}
           onChangeText={(text) => setNewMessage(text)}
           value={newMessage}
-          placeholder="Introduceți un mesaj..."
+          placeholder={cached_ui && cached_ui['CHTooltip'] ? cached_ui['CHTooltip'] : 'Input message...'}
           />
           <TouchableOpacity
             style={{ backgroundColor: '#ff9a00', padding: 10, margin: 5, borderRadius: 25}}
@@ -353,6 +263,7 @@ const FriendChat = ({ route }) => {
           </TouchableOpacity>
         </View>
       </View>
+      </TranslationProvider>
   );
 };
 

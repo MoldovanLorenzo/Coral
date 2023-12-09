@@ -2,11 +2,17 @@ import React, { useState } from "react";
 import { View, Text, TouchableOpacity, TextInput, StyleSheet, FlatList, Image } from 'react-native';
 import { FontAwesome } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
-import AsyncStorage from "@react-native-async-storage/async-storage"; 
+import { TranslationProvider, useTranslations } from '../hooks/translationContext';
 import Flag from 'react-native-flags';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { FIREBASE_FIRESTORE } from "../config/firebase"
+import { collection, query, where,getDocs,addDoc } from 'firebase/firestore';
 const FriendsFinder = () => {
   const navigation = useNavigation();
+  const usersCollection = collection(FIREBASE_FIRESTORE, 'users');
+  const friendshipsCollection = collection(FIREBASE_FIRESTORE, 'friendships');
   const [searchText, setSearchText] = useState('');
+  const cached_ui=useTranslations();
   const [searchResults, setSearchResults] = useState([]);
   const handleNavigateHome = () => {
     navigation.navigate('Home');
@@ -14,86 +20,72 @@ const FriendsFinder = () => {
   const handleFriendsRequestScreen=()=>{
     navigation.navigate('Request');
   }
-  const checkAuthToken = async () => {
-    try {
-      authToken = await AsyncStorage.getItem('auth_token');
-      console.log(authToken);
-    } catch (error) {
-      console.error('Eroare la retragerea token-ului:', error);
+  const determineStatus = async (searchResults) => {
+    const currentUserID = await AsyncStorage.getItem('user_id');
+    const filteredResults = searchResults.filter((result) => result.id !== currentUserID);
+  
+    for (const result of filteredResults) {
+      const { id: userID } = result;
+  
+      const senderRecipientQuery = query(friendshipsCollection, where('sender_id', '==', currentUserID), where('recipient_id', '==', userID));
+      const recipientSenderQuery = query(friendshipsCollection, where('sender_id', '==', userID), where('recipient_id', '==', currentUserID));
+  
+      const senderRecipientDocs = await getDocs(senderRecipientQuery);
+      const recipientSenderDocs = await getDocs(recipientSenderQuery);
+  
+      let status = 'none';
+  
+      senderRecipientDocs.forEach((doc) => {
+        if (doc.data().status === 'pending') {
+          status = 'incoming';
+        } else if (doc.data().status === 'accepted') {
+          status = 'friends';
+        }
+      });
+  
+      recipientSenderDocs.forEach((doc) => {
+        if (doc.data().status === 'pending') {
+          status = 'sent';
+        } else if (doc.data().status === 'accepted') {
+          status = 'friends';
+        }
+      });
+  
+      result.status = status;
     }
+  
+    setSearchResults(filteredResults);
   };
-  const getFlagCode = (language) => {
-    const languageToCodeMapping = {
-      'Spanish': 'ES',
-      'English': 'GB',
-      'Bulgarian': 'BG',
-      'Chinese': 'CN',
-      'Czech': 'CZ',
-      'Danish': 'DK',
-      'Dutch': 'NL',
-      'Estonian': 'EE',
-      'Finnish': 'FI',
-      'French': 'FR',
-      'German': 'DE',
-      'Greek': 'GR',
-      'Hungarian': 'HU',
-      'Indonesian': 'ID',
-      'Italian': 'IT',
-      'Japanese': 'JP',
-      'Korean': 'KR',
-      'Latvian': 'LV',
-      'Lithuanian': 'LT',
-      'Norwegian': 'NO',
-      'Polish': 'PL',
-      'Portuguese': 'PT',
-      'Romanian': 'RO',
-      'Russian': 'RU',
-      'Slovak': 'SK',
-      'Slovenian': 'SI',
-      'Swedish': 'SE',
-      'Turkish': 'TR',
-      'Ukrainian': 'UA',
-    };
-    return languageToCodeMapping[language] || 'EU';
-  };
+  
+  
   const handleSearch = async () => {
-    try {
-      
-      checkAuthToken().then(() =>
-        fetch("https://copper-pattern-402806.ew.r.appspot.com/users", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": authToken,
-          },
-          body: JSON.stringify({
-            "what": "findUserByString",
-            "username": searchText
-          }),
-        })
-          .then((response) => response.json())
-          .then(async (responseData) => {
-            console.log(responseData)
-            setSearchResults(responseData);
-          })
-          .catch((error) => {
-            console.error("Eroare de rețea:", error);
-          })
-      );
+    const querySnapshot = await getDocs(usersCollection);
+    const results = [];
 
-    } catch (error) {
-      console.error("Eroare de rețea:", error);
-    }
+querySnapshot.forEach((doc) => {
+  const displayName = doc.data().displayName;
+  if (displayName.toLowerCase().includes(searchText.toLowerCase())) {
+    results.push({
+      user_image: doc.data().photo,
+      id: doc.id,
+      preffered_language: doc.data().language,
+      username: displayName,
+      status: 'none',
+    });
+  }
+});
+  determineStatus(results);
   };
 
   return (
+    <TranslationProvider>
     <View style={styles.container}>
       <View style={styles.header}>
         <TouchableOpacity onPress={handleNavigateHome}>
           <FontAwesome name="angle-left" size={30} color="#ff9a00" />
         </TouchableOpacity>
         <View style={styles.headerTextContainer}>
-          <Text style={styles.headerText}>Add Friends</Text>
+          <Text style={styles.headerText}>{cached_ui && cached_ui['FFTop'] ? cached_ui['FFTop'] : 'Add Friends'}</Text>
         </View>
         <TouchableOpacity onPress={handleFriendsRequestScreen}>
         <FontAwesome name="envelope" size={24} color="#ff9a00" />
@@ -102,7 +94,7 @@ const FriendsFinder = () => {
       <View style={styles.inputContainer}>
         <TextInput
           style={styles.input}
-          placeholder="Search Friends"
+          placeholder={cached_ui && cached_ui['FFTooltip'] ? cached_ui['FFTooltip'] : 'Search Friends'}
           value={searchText}
           onChangeText={(text) => setSearchText(text)}
         />
@@ -118,46 +110,40 @@ const FriendsFinder = () => {
       : require('../assets/default_user.png');
 
     let button;
-    const flagCode=getFlagCode(item.preffered_language)
     switch (item.status) {
       case "none":
         button = (
-          <TouchableOpacity style={{ justifyContent: 'flex-end' }} onPress={() => {checkAuthToken().then(() =>
-            fetch("https://copper-pattern-402806.ew.r.appspot.com/users", {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                "Authorization": authToken,
-              },
-              body: JSON.stringify({
-                "what": "sendFriendRequest",
-                "recipient_id": item.id
-              }),
-            })
-              .then((response) => response.json())
-              .then(async (responseData) => {
-                console.log(responseData)
-                if (responseData.response=='OK') {
-                  const updatedResults = searchResults.map((sr) => {
-                    if (sr.id === item.id) {
-                      return { ...sr, status: 'sent' }; 
-                    }
-                    return sr;
-                  });
-                  setSearchResults(updatedResults);
+          <TouchableOpacity style={{ justifyContent: 'flex-end' }} onPress={async () => {
+            try {
+              const currentUserID = await AsyncStorage.getItem('user_id');
+              const timestamp = new Date();
+              await addDoc(friendshipsCollection, {
+                sender_id: currentUserID,
+                recipient_id: item.id,
+                timestamp: timestamp.toISOString(),
+                status:'pending', 
+              });
+        
+              const updatedResults = searchResults.map((sr) => {
+                if (sr.id === item.id) {
+                  return { ...sr, status: 'sent' };
                 }
-              })
-              .catch((error) => {
-                console.error("Eroare de rețea:", error);
-              })
-          );}}>
+                return sr;
+              });
+              setSearchResults(updatedResults);
+        
+              console.log('Friendship document created successfully!');
+            } catch (error) {
+              console.error('Error creating friendship document:', error);
+            }
+          }}>
             <FontAwesome name="user-plus" size={20} color="#ff9a00" />
           </TouchableOpacity>
         );
         break;
       case "sent":
         button = (
-          <TouchableOpacity style={{ justifyContent: 'flex-end' }} onPress={() => {}}>
+          <TouchableOpacity style={{ justifyContent: 'flex-end' }} >
             <FontAwesome name="ellipsis-h" size={20} color='lightgray' />
           </TouchableOpacity>
         );
@@ -186,12 +172,11 @@ const FriendsFinder = () => {
       <View style={styles.friendItem}>
         <View>
         <Image source={imageSource} style={styles.avatar} />
-        {item.preffered_language === "English" && (
-            <View style={styles.flagContainer}>
-              <Flag code={flagCode}  size={16} />
-            </View>
-          )}</View>
-        <View>
+        <View style={styles.flagContainer}>
+          <Flag code={item.preffered_language}  size={16} />
+        </View>
+        </View>
+        <View style={{paddingLeft:"10%",paddingRight:"10%"}}>
           <Text style={styles.friendName}>{item.username}</Text>
           <Text style={{ color: 'lightgray', fontSize: 10 }}>{item.id}</Text>
         </View>
@@ -202,6 +187,7 @@ const FriendsFinder = () => {
   keyExtractor={(item) => item.id.toString()}
 />
     </View>
+    </TranslationProvider>
   );
 };
 
@@ -253,7 +239,7 @@ const styles = StyleSheet.create({
   friendItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent:'space-between',
+    justifyContent:'start',
     padding: 15,
     borderBottomWidth: 1,
     borderBottomColor: 'gray',

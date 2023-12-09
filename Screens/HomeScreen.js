@@ -1,280 +1,79 @@
 import React, { useState, useEffect,useRef } from 'react';
+import { TranslationProvider, useTranslations } from '../hooks/translationContext';
 import { View, Text, FlatList, TouchableOpacity, Image} from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { FontAwesome } from '@expo/vector-icons';
-import { AppState } from 'react-native';
+import { FIREBASE_FIRESTORE } from "../config/firebase"
+import { query, where, getDocs,getDoc,doc,collectionGroup } from 'firebase/firestore';
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import useGlobalBackHandler from '../hooks/useGlobalBackHandler';
 import LoadingScreen from './LoadingScreen'
 import Flag from 'react-native-flags';
-import { debounce } from 'lodash';
-import { useSocket, SocketProvider } from '../hooks/socketInstance';
-import * as SQLite from 'expo-sqlite';
+
+
 import { useIsFocused } from '@react-navigation/native';
 const HomeScreen = ({ isDarkMode, setIsDarkMode, route}) => {
     const [loading, setLoading] = useState(false);
     const navigation = useNavigation();
-    const db = SQLite.openDatabase("CoralCache.db");
     const [activeTab, setActiveTab] = useState('friends');
-    let authToken = null;
-    const socket=useSocket()
     const [friendsData, setFriendsData] = useState([]);
     const isFocused = useIsFocused();
-    const friendsDataRef = useRef([]);
-    useGlobalBackHandler();
-    function generateUUID() {
-      let d = new Date().getTime();
-      const uuid = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-        const r = (d + Math.random() * 16) % 16 | 0;
-        d = Math.floor(d / 16);
-        return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
-      });
-      return uuid;
-    }
-    const translateText = async (toTranslate,targetLanguage) => {
-      const url = 'https://api-free.deepl.com/v2/translate';
-      const authKey = '5528c6fd-705c-5784-afd2-edba369cb1d9:fx'; // Replace with your actual DeepL Auth Key
-      const requestBody = {
-        text: [toTranslate],
-        target_lang: targetLanguage,
-      };
-    
-      try {
-        const response = await fetch(url, {
-          method: 'POST',
-          headers: {
-            'Authorization': `DeepL-Auth-Key ${authKey}`,
-            'User-Agent': 'YourApp/1.2.3', // Replace with your app's user agent
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify(requestBody)
-        });
-    
-        const data = await response.json();
-        return data
-      } catch (error) {
-        console.error('Error during translation:', error);
-      }
-    };
-    const handleAppStateChange = debounce((nextAppState) => {
-      if (nextAppState === 'active') {
-        console.log('App has come to the foreground!');
-        if (!socket.connected) {
-          socket.connect();
-        }
-        navigation.navigate('Home',{fetchFlag:true});
-      }
-      if (nextAppState === 'background' || nextAppState === 'inactive') {
-        console.log('App has gone to the background.');
-        if (socket.connected) {
-          socket.disconnect();
-        }
-      }
-    },50)
+    const {cached_ui, updateTranslations}=useTranslations();
+    useGlobalBackHandler();  
     const fetchData = async () => {
+      setLoading(true);
+      console.log(cached_ui);
       try {
-        setLoading(true);
-        console.log('just set loading')
-        const authToken = await AsyncStorage.getItem('auth_token');
-        if (!authToken) {
-          navigation.navigate('Login', { message: 'Null token' });
-          return;
-        }
-        const user_id=await AsyncStorage.getItem('user_id')
-        const response = await fetch("https://copper-pattern-402806.ew.r.appspot.com/chatrooms", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": authToken,
-          },
-          body: JSON.stringify({
-            "what": "getChatroomsFromUser",
-          }),
-        });
-        console.log(authToken)
-        const serverChatrooms = await response.json();
-        if ('response' in serverChatrooms && serverChatrooms.response.includes("NOK")) {
-          navigation.navigate('Login', { message: 'Expired session, please log in again' });
-          return;
-        }
-        
-        
-          await db.transaction(tx => {
-          serverChatrooms.forEach(serverChatroom => {
-            tx.executeSql(
-              `INSERT OR REPLACE INTO chatroom (id, name, language, photo) VALUES (?, ?, ?, ?);`,
-              [serverChatroom.chatroom_id, serverChatroom.other_user.username, serverChatroom.other_user.preffered_language, serverChatroom.other_user.user_image],
-              null,
-              error => console.log("Error upserting chatroom" ,error)
-            );
-          }) 
-          tx.executeSql(
-            `SELECT id FROM chatroom;`,
-            [],
-            (_, { rows }) => {
-              rows._array.forEach(localChatroom => {
-                if (!serverChatrooms.some(serverChatroom => serverChatroom.chatroom_id === localChatroom.id)) {
-                  tx.executeSql(
-                    `DELETE FROM chatroom WHERE id = ?;`,
-                    [localChatroom.id],
-                    null,
-                    error => console.log("Error deleting chatroom",error)
-                  );
-                }
-              });
-            },
-            error => console.log("Error selecting chatrooms", error)
-          );
-          
-        })
-        const updateChatrooms = () => {
-          return new Promise((resolve, reject) => {
-            db.transaction(tx => {
-              tx.executeSql(
-                `SELECT * FROM chatroom;`,
-                [],
-                (_, { rows }) => {
-                  const updatedChatrooms = rows._array;
-                  setFriendsData(updatedChatrooms);
-                  friendsDataRef.current = updatedChatrooms;
-                  const existingChatroomIds = new Set(friendsData.map(chatroom => chatroom.id));
-                  updatedChatrooms.forEach(chatroom => {
-                  if (!existingChatroomIds.has(chatroom.id)) {
-                    socket.emit('join_room', { "room": chatroom.id });
-                  }
+        const currentUserID = await AsyncStorage.getItem('user_id');
+        console.log('Current UserID:', currentUserID);
+    
+        const userDocRef = doc(FIREBASE_FIRESTORE, 'users', currentUserID);
+    
+        const chatroomRef = collectionGroup(FIREBASE_FIRESTORE, 'chatrooms');
+        const chatroomQuery = query(chatroomRef, where('users', 'array-contains', userDocRef));
+        const chatroomSnapshot = await getDocs(chatroomQuery);
+    
+        console.log('Chatrooms found:', chatroomSnapshot.size);
+    
+        const usersData = [];
+    
+        for (const chatroomDoc of chatroomSnapshot.docs) {
+          const chatroomData = chatroomDoc.data();
+          console.log(chatroomData);
+    
+          for (const userRef of chatroomData.users) {
+            const userID = userRef.id; 
+    
+            if (userID !== currentUserID) {
+              const userDocRef = doc(FIREBASE_FIRESTORE, 'users', userID);
+              const userDocSnapshot = await getDoc(userDocRef);
+    
+              if (userDocSnapshot.exists()) {
+                const userData = userDocSnapshot.data();
+    
+                usersData.push({
+                  chatroom_id:chatroomDoc.id,
+                  id: userDocSnapshot.id,
+                  name: userData.displayName,
+                  language: userData.language,
+                  photo: userData.photo,
                 });
-                  resolve(updatedChatrooms);
-                },
-                (tx, error) => {
-                  console.log("Error selecting updated chatrooms", error);
-                  reject(error);
-                }
-              );
-            });
-          });
-        };
-        updateChatrooms().then(()=>{
-          socket.emit('fetch_pending_messages', {'sender_id': user_id});
-          setTimeout(() => {
-            setLoading(false); 
-          }, 2000)
-        });
-      } catch (error) {
-        console.error("Eroare de rețea:", error);
-        navigation.navigate('Login', { message: 'Network error' });
-      }
-    };
-    const getFlagCode = (language) => {
-      const languageToCodeMapping = {
-        'Spanish': 'ES',
-        'English': 'GB',
-        'Bulgarian': 'BG',
-        'Chinese': 'CN',
-        'Czech': 'CZ',
-        'Danish': 'DK',
-        'Dutch': 'NL',
-        'Estonian': 'EE',
-        'Finnish': 'FI',
-        'French': 'FR',
-        'German': 'DE',
-        'Greek': 'GR',
-        'Hungarian': 'HU',
-        'Indonesian': 'ID',
-        'Italian': 'IT',
-        'Japanese': 'JP',
-        'Korean': 'KR',
-        'Latvian': 'LV',
-        'Lithuanian': 'LT',
-        'Norwegian': 'NO',
-        'Polish': 'PL',
-        'Portuguese': 'PT',
-        'Romanian': 'RO',
-        'Russian': 'RU',
-        'Slovak': 'SK',
-        'Slovenian': 'SI',
-        'Swedish': 'SE',
-        'Turkish': 'TR',
-        'Ukrainian': 'UA',
-      };
-      return languageToCodeMapping[language] || 'EU';
-    };
-    const handleReceivedMessages = async (receivedMessages) => {
-      console.log('at this timestep, friends data is:')
-      console.log(friendsDataRef.current)
-      const updatedFriendsData = [...friendsDataRef.current];
-      console.log(updatedFriendsData)
-      console.log(receivedMessages)
-
-      for (const message of receivedMessages) {
-        const chatroomIndex = updatedFriendsData.findIndex(room => room.id == message.room);
-        if (chatroomIndex !== -1) {
-          updatedFriendsData[chatroomIndex].latest = message;
-          
-        }
-      }
-      console.log('friends data')
-      setFriendsData(updatedFriendsData);
-      console.log(friendsData)
-      console.log('just set friendsdata')
-    };
-    useEffect(() => {
-      
-
-      socket.on('pending_messages', async (data) => {
-        console.log('received pending messages');
-        try {
-          var language = await AsyncStorage.getItem('user_language');
-          var target = getFlagCode(language);
-      
-          const translatedMessages = await Promise.all(data.map(async (message) => {
-            const translation = await translateText(message.message, target);
-            return translation.translations[0].text;
-          }));
-          const new_data = data.map((message, index) => ({
-            ...message,
-            message: translatedMessages[index]
-          }));
-      
-          await handleReceivedMessages(new_data);
-      
-          await db.transaction(async (tx) => {
-            await Promise.all(new_data.map(async (message) => {
-              try {
-                await new Promise((resolve, reject) => {
-                  tx.executeSql(
-                    "INSERT INTO message (id, content, local_sender, chatroom_id, timestamp) VALUES (?, ?, ?, ?, ?);",
-                    [generateUUID(), message.message, false, message.room, message.timestamp],
-                    () => {
-                      console.log("Message saved");
-                      console.log(message);
-                      resolve();
-                    },
-                    (t, error) => {
-                      console.error("Error saving message", error);
-                      reject(error);
-                    }
-                  );
-                });
-              } catch (error) {
-                console.error("Error in database transaction:", error);
+              } else {
+                console.log(`User with ID ${userID} does not exist`);
               }
-            }));
-          });
-        } catch (error) {
-          console.error("Error:", error);
+            }
+          }
         }
-      });
-      socket.on('no_pending_messages',()=>{
-        console.log('no pending messages for user');
-      }) 
-      
-      AppState.addEventListener('change', handleAppStateChange);
-      return () => {
-        socket.off('pending_messages');
-        socket.off('no_pending_messages');
-        
-      };
-    }, []);
+    
+        console.log('Users Data:', usersData);
+        setFriendsData(usersData);
+      } catch (error) {
+        console.error('Error fetching friends data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
     useEffect(() => {
       if (isFocused) {
         const fetchFlag = route.params?.fetchFlag ?? false;
@@ -286,7 +85,8 @@ const HomeScreen = ({ isDarkMode, setIsDarkMode, route}) => {
     }
    }, [isFocused, route.params]);
     const handleFriendSelection = (friend) => {
-      navigation.navigate('FriendChat', {friend,authToken});
+      console.log(friend);
+      navigation.navigate('FriendChat', {friend});
     };
 
     const handleSettingsSelection = () => {
@@ -298,7 +98,7 @@ const HomeScreen = ({ isDarkMode, setIsDarkMode, route}) => {
     };
 
   return (
-      
+      <TranslationProvider>
       <View style={{ flex: 1, backgroundColor: isDarkMode ? '#191919' : 'white' }}>
         {loading && <LoadingScreen />}
         <View style={{ flexDirection: 'row',alignItems:'center',justifyContent:'space-between',paddingTop:25,paddingBottom:25}}>
@@ -323,7 +123,7 @@ const HomeScreen = ({ isDarkMode, setIsDarkMode, route}) => {
               borderRadius: 20,
             }}
           >
-            <Text style={{ padding: 16, textAlign: 'center', fontWeight: activeTab === 'friends' ? 'bold' : 'normal' }}>Friends</Text>
+            <Text style={{ padding: 16, textAlign: 'center', fontWeight: activeTab === 'friends' ? 'bold' : 'normal' }}>{cached_ui && cached_ui['HSFriends'] ? cached_ui['HSFriends'] : 'Friends'}</Text>
           </TouchableOpacity>
           <TouchableOpacity
             onPress={() => {}}
@@ -332,7 +132,7 @@ const HomeScreen = ({ isDarkMode, setIsDarkMode, route}) => {
               backgroundColor: activeTab === 'chatRooms' ? '#ff9a00' : 'lightgray',
               borderRadius: 20,
             }}>
-            <Text style={{ padding: 16, textAlign: 'center',color:'#808080',fontWeight: activeTab === 'chatRooms' ? 'bold' : 'normal' }}>Chat Rooms</Text>
+            <Text style={{ padding: 16, textAlign: 'center',color:'#808080',fontWeight: activeTab === 'chatRooms' ? 'bold' : 'normal' }}>{cached_ui && cached_ui['HSChatroom'] ? cached_ui['HSChatroom'] : 'Chat rooms'}</Text>
             <Image
             source={require('../assets/coming_soon.png')}
             style={
@@ -372,7 +172,7 @@ const HomeScreen = ({ isDarkMode, setIsDarkMode, route}) => {
                         borderRadius: 25,
                         marginRight: 10,
                       }}/>
-                  <Flag code={getFlagCode(item.language)} size={16} style={{
+                  <Flag code={item.language} size={16} style={{
                     position: 'absolute',
                     bottom: 0,
                     right: 5,}}/>
@@ -397,6 +197,7 @@ const HomeScreen = ({ isDarkMode, setIsDarkMode, route}) => {
           </FlatList>
         )}
       </View>
+      </TranslationProvider>
   );
   };
 

@@ -1,13 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, ScrollView,Image, Linking} from 'react-native';
 import { FontAwesome } from '@expo/vector-icons';
+import { TranslationProvider, useTranslations } from '../hooks/translationContext';
 import { useNavigation } from '@react-navigation/native';
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as ImagePicker from 'expo-image-picker';
-import * as ImageManipulator from 'expo-image-manipulator';
+import { collection, doc, updateDoc } from 'firebase/firestore';
+import { FIREBASE_FIRESTORE } from "../config/firebase"
 export default function Settings({ isDarkMode, setIsDarkMode }) {
   const [username, setUsername] = useState('');
   const [photo, setPhoto] = useState(null);
+  const usersCollection = collection(FIREBASE_FIRESTORE, 'users');
+  const cached_ui=useTranslations();
   const defaultImage = require('../assets/default_user.png');
   const retrieveInfo = async () => {
     try {
@@ -45,40 +49,23 @@ const handleProfileSelection = async () => {
     base64: true,
   });
 
-  if (!result.cancelled) {
+  if (!result.canceled) {
     console.log(result.uri);
+    const userPhotoBase64 = result.base64; 
+
+    try {
+        const userID = await AsyncStorage.getItem('user_id');
+        const userDocRef = doc(usersCollection, userID);
+        await updateDoc(userDocRef, {
+            photo: userPhotoBase64, 
+        });
+        await AsyncStorage.setItem('user_photo',userPhotoBase64);
+        setPhoto(userPhotoBase64);
+        alert('Photo changed successfully!');
+    } catch (error) {
+        alert('Error updating user photo:', error);
+    }
     
-    const serverUrl = "https://copper-pattern-402806.ew.r.appspot.com/chatrooms";
-    const auth_token=await AsyncStorage.getItem('auth_token')
-    const resizedImage = await ImageManipulator.manipulateAsync(
-      result.uri,
-      [{ resize: { width: 350, height:250  } }], 
-      { compress: 0.7, format: ImageManipulator.SaveFormat.JPEG, base64: true }
-    );
-    fetch(serverUrl, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization":auth_token
-      },
-      body: JSON.stringify({
-        what:'updateUser',
-        new_email:'null',
-        new_language:'null',
-        new_pfp:resizedImage.base64
-      }),
-    }).then((response) => response.json())
-    .then(async (responseData) => {
-      console.log("Response from server:", responseData);
-      if(responseData.response=='OK'){
-        await AsyncStorage.setItem('user_photo',resizedImage.base64)
-        setPhoto(resizedImage.base64)
-      }
-    })
-    .catch((error) => {
-      console.error("Eroare de rețea:", error);
-      return;
-    })
 };
 }
 
@@ -125,10 +112,11 @@ const handleProfileSelection = async () => {
     navigation.navigate('Login')
   }
   return (
+    <TranslationProvider>
     <ScrollView>
     <View style={{ flex: 1, flexDirection: 'column',backgroundColor: isDarkMode ? '#191919' : 'white' }}>
       <View style={{ alignSelf: 'center', height: 100, width: 450 }}>
-        <Text style={{ alignSelf: 'center', position: 'relative', top: 50, fontWeight: 'bold', fontSize: 25,color: isDarkMode ? 'gray' : 'black'}}>Settings</Text>
+        <Text style={{ alignSelf: 'center', position: 'relative', top: 50, fontWeight: 'bold', fontSize: 25,color: isDarkMode ? 'gray' : 'black'}}>{cached_ui && cached_ui['STTop'] ? cached_ui['STTop'] : 'Settings'}</Text>
         <TouchableOpacity
           onPress={handleHomeScreenSelection}
           style={{ position: 'relative', left: 80, top: 15 }}
@@ -162,33 +150,34 @@ const handleProfileSelection = async () => {
 <TouchableOpacity onPress={handleLanguageScreenSelection}>
 <View style={{paddingLeft:30,height:70,width:300,borderRadius:30,alignSelf:'center',marginTop:20,backgroundColor: isDarkMode ? '#191919' : 'lightgray'}}>
 <FontAwesome name="language" size={30} color='gray' style={{position:'relative',top:20}}/>
-<Text style={{alignSelf:'center',fontSize:20,fontWeight:'bold',color:'gray',position:'relative',bottom:10}}>Language</Text>
+<Text style={{alignSelf:'center',fontSize:20,fontWeight:'bold',color:'gray',position:'relative',bottom:10}}>{cached_ui && cached_ui['STLanguage'] ? cached_ui['STLanguage'] : 'Language'}</Text>
 </View>
 </TouchableOpacity>
 <TouchableOpacity onPress={handleThemesScreenSelection}>
 <View style={{paddingLeft:30,height:70,width:300,backgroundColor:'lightgray',borderRadius:30,alignSelf:'center',marginTop:20,backgroundColor: isDarkMode ? '#191919' : 'lightgray'}}>
 <FontAwesome name="star" size={30} color='gray' style={{position:'relative',top:20}}/>
-<Text style={{alignSelf:'center',fontSize:20,fontWeight:'bold',color:'gray',position:'relative',bottom:10}}>Themes</Text>
+<Text style={{alignSelf:'center',fontSize:20,fontWeight:'bold',color:'gray',position:'relative',bottom:10}}>{cached_ui && cached_ui['STThemes'] ? cached_ui['STThemes'] : 'Themes'}</Text>
 </View>
 </TouchableOpacity>
 <TouchableOpacity onPress={handleAsisteceScreenSelection}>
 <View style={{paddingLeft:30,height:70,width:300,backgroundColor:'lightgray',borderRadius:30,alignSelf:'center',marginTop:20,backgroundColor: isDarkMode ? '#191919' : 'lightgray'}}>
 <FontAwesome name="question" size={30} color='gray' style={{position:'relative',top:20}}/>
-<Text style={{alignSelf:'center',fontSize:20,fontWeight:'bold',color:'gray',position:'relative',bottom:10}}>Assistance</Text>
+<Text style={{alignSelf:'center',fontSize:20,fontWeight:'bold',color:'gray',position:'relative',bottom:10}}>{cached_ui && cached_ui['STAssistance'] ? cached_ui['STAssistance'] : 'Assistance'}</Text>
 </View>
 </TouchableOpacity>
 <TouchableOpacity onPress={handlFeedbadScreenSelection}>
   <View style={{ paddingLeft: 30, height: 70, width: 300, backgroundColor: 'lightgray', borderRadius: 30, alignSelf: 'center', marginTop: 20, backgroundColor: isDarkMode ? '#191919' : 'lightgray' }}>
     <FontAwesome name="comment" size={30} color='gray' style={{ position: 'relative', top: 20 }} />
-    <Text style={{ alignSelf: 'center', fontSize: 20, fontWeight: 'bold', color: 'gray', position: 'relative', bottom: 10 }}>Feedback</Text>
+    <Text style={{ alignSelf: 'center', fontSize: 20, fontWeight: 'bold', color: 'gray', position: 'relative', bottom: 10 }}>{cached_ui && cached_ui['STFeedback'] ? cached_ui['STFeedback'] : 'Feedback'}</Text>
   </View>
 </TouchableOpacity>
 <TouchableOpacity onPress={handleSingout}>
 <View style={{paddingLeft:30,height:70,width:300,borderRadius:30,alignSelf:'center',marginTop:20,backgroundColor: isDarkMode ? '#191919' : '#ff7b7b'}}>
-<Text style={{alignSelf:'center',fontSize:20,fontWeight:'bold',color:'#ff5252',position:'relative',marginTop:20}}>Log out</Text>
+<Text style={{alignSelf:'center',fontSize:20,fontWeight:'bold',color:'#ff5252',position:'relative',marginTop:20}}>{cached_ui && cached_ui['STLogout'] ? cached_ui['STLogout'] : 'Logout'}</Text>
 </View>
 </TouchableOpacity>
     </View>
     </ScrollView>
+    </TranslationProvider>
   );
 }
