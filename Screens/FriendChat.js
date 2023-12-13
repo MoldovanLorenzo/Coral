@@ -21,6 +21,7 @@ const FriendChat = ({ route }) => {
   const chatroom_id = route.params.friend.chatroom_id;
   const navigator=useNavigation();
   const [selectedImage, setSelectedImage] = useState(null);
+  const [reply, setReply] = useState(null);
 
   const prepareMessages = (messages) => {
     const sortedMessages = messages.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
@@ -68,34 +69,8 @@ const FriendChat = ({ route }) => {
       dcurrentUserID = await AsyncStorage.getItem('user_id');
       setCurrentUserID(dcurrentUserID);
     }
-    try {
-      const messagesRef = collection(FIREBASE_FIRESTORE, 'messages');
-      const messagesQuery = query(
-        messagesRef,
-        where('chatroom_id', '==', chatroom_id),
-        orderBy('timestamp', 'asc')
-      );
-      const messagesSnapshot = await getDocs(messagesQuery);
-      console.log('Loading snapshots!');
-      const fetchedMessages = [];
-      messagesSnapshot.forEach((messageDoc) => {
-        const messageData = messageDoc.data();
-        console.log(messageData)
-        fetchedMessages.push({
-          id: messageDoc.id,
-          content: messageData.content,
-          sender_id: messageData.sender_id,
-          photo_content: messageData.photo_content,
-          timestamp: messageData.timestamp,
-          translated_content:messageData.translated_content
-        });
-      });
-  
-      setMessages(fetchedMessages);
-    } catch (error) {
-      console.error('Error loading messages:', error);
-    }
   };
+ 
   const sendMessage = async () => {
     if (newMessage.trim() !== '' || selectedImage) {
       try {
@@ -112,6 +87,7 @@ const FriendChat = ({ route }) => {
           content: newMessage,
           translated_content:translated_message.translations[0].text,
           photo_content: selectedImage,
+          reply_to:reply,
           chatroom_id: chatroom_id,
           timestamp:new Date().toISOString(),
           sender_language:my_language,
@@ -135,6 +111,7 @@ const FriendChat = ({ route }) => {
     const authKey = '5528c6fd-705c-5784-afd2-edba369cb1d9:fx'; 
     const countryCodeMapping = {
       BG: 'BG',
+      GB: 'EN',
       CN: 'ZH',
       CZ: 'CS',
       DK: 'DA',
@@ -202,47 +179,83 @@ const FriendChat = ({ route }) => {
     });
     return () => unsubscribe();
     },[chatroom_id]);
-    
+    const styles = StyleSheet.create({
+      messageContainer: {
+        flexDirection: 'row',
+        marginVertical: 5,
+        justifyContent:'space-around',
+        alignItems:'center',
+      },
+      replyContainer: {
+        flexDirection: 'column',
+        marginVertical: 5,
+        justifyContent:'flex-start',
+        alignItems:'flex-start',
+        alignSelf: 'flex-start'
+      },
+      messageBubble: {
+        padding: 10,
+        borderRadius: 20,
+        maxWidth: '80%',
+      },
+      replyMessage:{
+        backgroundColor: 'lightgray',
+        marginLeft: 10,
+      },
+      replyMessageSent:{
+        backgroundColor: 'lightgray',
+        marginLeft: 10,
+        marginBottom:-7,
+        opacity:0.7
+      },
+      replyMessageRecived:{
+        backgroundColor: 'lightgray',
+        marginRight: 10,
+        marginBottom:-7,
+        opacity:0.7
+      },
+      sentMessage: {
+        backgroundColor: 'orange',
+        marginRight: 10,
+      },
+      receivedMessage: {
+        backgroundColor: 'orange',
+        marginLeft: 10,
+      },
+      sentMessageExtraPad: {
+        backgroundColor: 'orange',
+        marginRight: 20,
+      },
+      receivedMessageExtraPad: {
+        backgroundColor: 'orange',
+        marginLeft: 20,
+      },
+      replyLeft: {  
+        transform: [{ scaleX: -1 }],
+        padding:'2%',
+      },
+      replyRight: {
+        padding:'2%',
+      },
+      userName: {
+        fontSize: 14,
+      },
+      messageText: {
+        fontSize: 14,
+        color: 'white',
+      },
+      imageMessage: {
+        width: 150,
+        height: 150,
+        borderRadius: 10,
+      },
+      messageContainerWithPhoto: {
+        flexDirection: 'column',
+        alignItems: 'flex-start', 
+        marginBottom: 5, 
+      }
+    });
     const renderChatItem = ({ item }) => {
-      const styles = StyleSheet.create({
-        messageContainer: {
-          flexDirection: 'row',
-          marginVertical: 5,
-          alignItems: 'center',
-        },
-        messageBubble: {
-          padding: 10,
-          borderRadius: 20,
-          maxWidth: '80%',
-        },
-        sentMessage: {
-          backgroundColor: 'orange',
-          marginLeft: 'auto',
-          marginRight: 10,
-        },
-        receivedMessage: {
-          backgroundColor: 'lightgray',
-          marginLeft: 10,
-        },
-        userName: {
-          fontSize: 14,
-        },
-        messageText: {
-          fontSize: 14,
-          color: 'white',
-        },
-        imageMessage: {
-          width: 150,
-          height: 150,
-          borderRadius: 10,
-        },
-        messageContainerWithPhoto: {
-          flexDirection: 'column',
-          alignItems: 'flex-start', 
-          marginBottom: 5, 
-        }
-      });
-    
       if (item.type === 'dateSeparator') {
         return (
           <View style={{ alignItems: 'center', padding: 10 }}>
@@ -258,6 +271,9 @@ const FriendChat = ({ route }) => {
               styles.messageContainer,
               isSentMessage ? { justifyContent: 'flex-end' } : { justifyContent: 'flex-start' },
             ]}>
+              <TouchableOpacity onPress={() => setReply(item.id)} style={isSentMessage ? styles.replyRight : styles.replyLeft}>
+                <FontAwesome name="reply" size={16} color="lightgray" />
+              </TouchableOpacity>
               <Image
                 source={{ uri: `data:image/jpeg;base64,${item.photo_content}` }}
                 style={[
@@ -283,21 +299,124 @@ const FriendChat = ({ route }) => {
         );
       } else {
         const isSentMessage = item.sender_id === currentUserID;
-    
-        return (
-          <View style={[
-            styles.messageContainer,
-            isSentMessage ? { justifyContent: 'flex-end' } : { justifyContent: 'flex-start' },
-          ]}>
+        console.log('MESAJUL CURENT ESTE:')
+        console.log(item)
+        const repliedMessage = messages.find(msg => msg.id === item.reply_to);
+        console.log('MESAJUL LA CARE SE RASPUNE RN:')
+        console.log(repliedMessage)
+        if (repliedMessage) {
+          if (isSentMessage) {
+            return (
+              <View>
+                {/* Render the replied message */}
+                <View style={[
+                  styles.messageContainer,
+                  isSentMessage ? { justifyContent: 'flex-end' } : { justifyContent: 'flex-start' },
+                ]}>
+                  
+                  
+                  <View style={[
+                    styles.messageBubble,
+                    styles.sentMessage,
+                    styles.replyMessageSent, 
+                  ]}>
+                    <Text style={styles.messageText}>{repliedMessage.content}</Text>
+                  </View>
+                </View>
+                
+                {/* Render the current message */}
+                <View style={[
+                  styles.messageContainer,
+                  isSentMessage ? { justifyContent: 'flex-end' } : { justifyContent: 'flex-start' },
+                ]}>
+                  <TouchableOpacity onPress={() => setReply(item.id)} style={isSentMessage ? styles.replyRight : styles.replyLeft}>
+                    <FontAwesome name="reply" size={16} color="lightgray" />
+                  </TouchableOpacity>
+                  <View style={[
+                    styles.messageBubble,
+                    isSentMessage ? styles.sentMessageExtraPad : styles.receivedMessageExtraPad
+                  ]}>
+                    <Text style={styles.messageText}>{item.content}</Text>
+                  </View>
+                </View>
+              </View>
+            );
+          } else {
+            return (
+              <View>
+                {/* Render the replied message */}
+                <View style={[
+                  styles.messageContainer,
+                  isSentMessage ? { justifyContent: 'flex-end' } : { justifyContent: 'flex-start' },
+                ]}>
+                  <View style={[
+                    styles.messageBubble,
+                    styles.receivedMessage,
+                    styles.replyMessageRecived, // Apply CSS for received message
+                  ]}>
+                    <Text style={styles.messageText}>{repliedMessage.translated_content}</Text>
+                  </View>
+                  
+                </View>
+                
+                {/* Render the current message */}
+                <View style={[
+                  styles.messageContainer,
+                  isSentMessage ? { justifyContent: 'flex-end' } : { justifyContent: 'flex-start' },
+                ]}>
+                  
+                  <View style={[
+                    styles.messageBubble,
+                    isSentMessage ? styles.sentMessageExtraPad : styles.receivedMessageExtraPad
+                  ]}>
+                    <Text style={styles.messageText}>{item.translated_content}</Text>
+                  </View>
+                  <TouchableOpacity onPress={() => setReply(item.id)} style={styles.replyLeft}>
+                    <FontAwesome name="reply" size={16} color="lightgray" />
+                  </TouchableOpacity>
+                </View>
+              </View>
+            );
+          }
+        } else {
+          if (isSentMessage) {
+          return (
             <View style={[
-              styles.messageBubble,
-              isSentMessage ? styles.sentMessage : styles.receivedMessage
+              styles.messageContainer,
+              { justifyContent: 'flex-end' },
             ]}>
-              <Text style={styles.messageText}>{isSentMessage ? item.content : item.translated_content}</Text>
+              <TouchableOpacity onPress={() => setReply(item.id)} style={styles.replyRight}>
+                <FontAwesome name="reply" size={16} color="lightgray" />
+              </TouchableOpacity>
+              
+              <View style={[
+                styles.messageBubble,
+                styles.sentMessage
+              ]}>
+                <Text style={styles.messageText}>{item.content}</Text>
+              </View>
             </View>
-          </View>
-        );
+          );
+        } else {
+          return (
+            <View style={[
+              styles.messageContainer,
+              { justifyContent: 'flex-start' },
+            ]}>
+              <View style={[
+                styles.messageBubble,
+                styles.receivedMessage
+              ]}>
+                <Text style={styles.messageText}>{item.translated_content}</Text>
+              </View>
+              <TouchableOpacity onPress={() => setReply(item.id)} style={styles.replyLeft}>
+                <FontAwesome name="reply" size={16} color="lightgray" />
+              </TouchableOpacity>
+            </View>
+          );
+        }
       }
+    }
     };
     
     
@@ -365,6 +484,42 @@ const FriendChat = ({ route }) => {
     </TouchableOpacity>
         </View>
          )}
+    {reply && messages.map((item) => {
+  if (item.id === reply) {
+    const isSentMessage = item.sender_id === currentUserID;
+    return (
+      <View style={[
+        styles.replyContainer,
+      ]}>
+        <Text style={{paddingLeft:15,paddingBottom:5,fontWeight:'bold'}}>Replying to:</Text>
+        <View style={[
+          styles.messageBubble,
+          styles.replyMessage
+        ]}>
+          <Text style={styles.messageText}>{isSentMessage ? item.content : item.translated_content}</Text>
+        </View>
+        <TouchableOpacity
+  style={{
+    position:'absolute',
+    top:0,
+    right:-30,
+    height: 27,
+    width: 25,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    borderRadius: 10,
+    padding: 5,
+  }}
+  onPress={() => setReply(null)}>
+  <Text>
+    <FontAwesome name="ban" size={18} color="white" />
+  </Text>
+</TouchableOpacity>
+      </View>
+      
+    );
+  }
+  return null;
+})}
         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
         <TextInput
           style={{ flex: 1, height: 50, borderColor: 'gray', borderWidth: 1, margin: 5, borderRadius:25,paddingLeft:15 }}
@@ -372,12 +527,14 @@ const FriendChat = ({ route }) => {
           value={newMessage}
           placeholder={cached_ui && cached_ui['CHTooltip'] ? cached_ui['CHTooltip'] : 'Input message...'}
           />
-          <TouchableOpacity
+          {!reply && (
+            <TouchableOpacity
             style={{ backgroundColor: '#ff9a00', padding: 10, margin: 5, borderRadius: 25}}
             onPress={pickImage}
           >
             <FontAwesome name="image" size={18} color="white" />
           </TouchableOpacity>
+          )}
           <TouchableOpacity
             style={{ backgroundColor: '#ff9a00', padding: 10, margin: 5, borderRadius: 25}}
             onPress={sendMessage}
